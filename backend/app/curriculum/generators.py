@@ -40,11 +40,13 @@ def upcoming_monday(d: date) -> date:
     return d if d.weekday() == 0 else d + timedelta(days=7 - d.weekday())
 
 
-def ensure_skill_embeddings(skills: list[Skill], embedder, repo=repository) -> list[Skill]:
-    """Embed skill descriptions once and cache them in the DB. They are the *query vectors* for retrieval."""
+def ensure_skill_embeddings(skills: list[Skill], embedder, repo=repository, settings: Settings | None = None) -> list[Skill]:
+    """Embed skill descriptions once and cache them in the DB. They are the *query vectors* for retrieval.
+    The embedder (and so an OpenAI key) is only needed the first time, when some skill has no stored vector."""
     missing = [s for s in skills if s.embedding is None]
     if missing:
         import numpy as np
+        embedder = embedder or _default_embedder(settings or get_settings())
         vecs = embedder.embed([f"{s.name}: {s.description}" for s in missing])
         for s, v in zip(missing, vecs):
             repo.set_skill_embedding(s.slug, v)
@@ -80,7 +82,7 @@ def generate_weekly_theme(
     if existing and not force and not dry_run:
         return {"id": str(existing["id"]), "week_start": week_start.isoformat(), "payload": existing["payload"], "cached": True}
 
-    skills = ensure_skill_embeddings(repo.load_skills(), embedder or _default_embedder(settings), repo)
+    skills = ensure_skill_embeddings(repo.load_skills(), embedder, repo, settings)
     articles = _select(skills, settings, repo)
     user = prompts.build_weekly_prompt(week_start, today, skills, articles, settings.candidate_window_days)
     if dry_run:
@@ -117,7 +119,7 @@ def generate_daily_briefing(
     theme = theme_row["payload"]
     plan_entry = next(d for d in theme["daily_plan"] if d["day"] == day.isoweekday())
 
-    skills = ensure_skill_embeddings(repo.load_skills(), embedder or _default_embedder(settings), repo)
+    skills = ensure_skill_embeddings(repo.load_skills(), embedder, repo, settings)
     articles = _select(skills, settings, repo, exclude=repo.used_reading_ids(),
                        boost={plan_entry["skill_slug"]: 1.3})  # bias retrieval toward today's skill
     user = prompts.build_daily_prompt(day, theme, plan_entry, skills, articles, repo.recent_work(day), settings.candidate_window_days)

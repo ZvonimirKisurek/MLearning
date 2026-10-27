@@ -35,8 +35,8 @@ frontend/                Next.js app (Step 5)
 | 1 | Repo, schema, Supabase connection | done |
 | 2 | Scrapers, parsers, embeddings, dedup, Celery beat | done (untested against live DB/feeds, see below) |
 | 3 | Prompt engineering + weekly/daily generators, Pydantic output validation, skill matrix | done (tested with a fake LLM + real Postgres; not yet with a live Anthropic key) |
-| 4 | FastAPI endpoints (`/briefing/today`, complete task, feed, skills) | |
-| 5 | Next.js + shadcn/ui dashboard | |
+| 4 | FastAPI endpoints (today, complete task, feed, skills) + AI summaries | done (62 tests incl. real-Postgres API tests) |
+| 5 | Next.js dashboard (Command Center + Intelligence Feed) | done (production build + real-browser checks against the real API on demo data) |
 
 ## Run locally
 ```bash
@@ -79,6 +79,33 @@ python -m app.cli generate-weekly --dry-run   # prints the exact system + user p
 python -m app.cli generate-weekly             # needs ANTHROPIC_API_KEY, OPENAI_API_KEY (skill embeddings) and ingested articles
 python -m app.cli generate-daily [--force]
 pytest                                        # includes real-Postgres integration tests (embedded pgvector via pixeltable-pgserver)
+```
+
+## API + frontend: how data flows
+
+```
+Browser ──HTML/RSC stream──► Next.js server ──Bearer token──► FastAPI ──async psycopg──► Postgres/pgvector
+   │  ▲                         │  (server components, server actions, /api/feed proxy)
+   │  └─ optimistic UI          └─ the browser never sees API_TOKEN and never calls FastAPI -> no CORS on this path
+   └─ Server Action: tick a task ─► POST /api/tasks/{id}/complete ─► refresh() re-renders every consumer
+```
+
+**Why async FastAPI.** One event loop serves many requests; awaiting a query yields the thread to other requests instead of blocking it. One pool per process, one borrowed connection per request, and that connection is also the transaction (commit on success, rollback on exception). Anything blocking (e.g. enqueuing a Celery task) is pushed to a threadpool. Celery/CLI keep the simple sync pool.
+
+**Why Pydantic at both boundaries.** At the LLM boundary it turns an unreliable producer into typed, validated data (with repair). At the HTTP boundary `response_model` serialises, hides undeclared fields and generates the OpenAPI schema. The briefing API models *inherit* the LLM output models, so the contract the model is asked to satisfy and the one the UI consumes cannot drift.
+
+**Consuming the feed (dedup + relevance).** Ingestion collapses near-identical stories (`duplicate_of`); the API hides the copies and reports `also_covered_by`, so "also on 2" means two other sources carried the same story. `skill_match.similarity` is the cosine similarity between the article's embedding and your skill's description embedding. It is *not* a percentage (typical values 0.15-0.5), so the API also returns a `strength` bucket; calibrate the thresholds on your own data with `python -m app.cli feed-stats`. `sort=relevance` ranks by `similarity * (0.5 + 0.5 * gap)`: matches to skills you are furthest from target on float up. Pagination is keyset (cursor = last sort value + id), which stays correct while new articles arrive; `OFFSET` would skip or repeat rows.
+
+**Server vs Client Components.** Default to Server Components: they fetch on the server (token stays secret, no client waterfall) and ship no JS. Client Components only where the browser is needed: `MissionBoard` (optimistic checkboxes), `PendingBriefing` (polling), `SkillProgress` (Recharts), `FeedList` ("Load more"), `NavLinks` (active route). With Cache Components, anything per-request (API data, `searchParams`) sits inside `<Suspense>`, so the shell prerenders instantly and the data streams in (both routes build as "Partial Prerender"). **Not generated yet?** `/api/today` returns `state: "pending"` with a 200 (an expected state, not an error); the UI shows an empty state whose button enqueues the Celery job (202) and polls until ready, or says Redis/Celery is down (503). API down or wrong token renders an explanatory panel; unexpected failures hit `error.tsx` with a retry.
+
+**Security notes.** Server Actions and the `/api/feed` proxy validate their inputs. Article/AI text is rendered as plain text (React escapes it) and links come only from the database. The Next app itself has no login: if you deploy it publicly, put it behind your host's access control (Vercel password protection, Cloudflare Access, basic auth).
+
+```bash
+# terminal 1-3: backend (API + worker + scheduler)
+cd backend && uvicorn app.main:app --reload
+celery -A app.celery_app worker -l info          # and: celery -A app.celery_app beat -l info
+# terminal 4: frontend
+cd frontend && cp .env.example .env.local && npm install && npm run dev
 ```
 
 ## Design notes

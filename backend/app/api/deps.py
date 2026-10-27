@@ -76,5 +76,9 @@ def get_enqueue() -> Callable[[str], None]:
     def enqueue(task_name: str) -> None:
         from app.celery_app import app as celery
 
-        celery.send_task(task_name)
+        # Pre-flight: kombu retries a dead broker connection for a long time by default (~20s). Probe once with a
+        # short timeout so a missing Redis surfaces as a quick 503, not a hung request.
+        with celery.connection_for_write() as conn:
+            conn.ensure_connection(max_retries=1, interval_start=0, interval_step=0.2, timeout=2)
+        celery.send_task(task_name, retry=False)
     return enqueue

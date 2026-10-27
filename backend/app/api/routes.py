@@ -7,6 +7,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.concurrency import run_in_threadpool
 
 from app.api import queries
 from app.api.deps import Cfg, Conn, get_enqueue, require_token
@@ -65,7 +66,9 @@ async def generate_briefing(conn: Conn, cfg: Cfg, enqueue: Annotated[Callable[[s
     if await queries.briefing_exists(conn, _today(cfg)):
         return QueueOut(queued=False, reason="already generated")
     try:
-        enqueue("app.tasks.generate_daily_briefing")
+        # `enqueue` is blocking network I/O (a Redis connection). Calling it directly inside `async def` would
+        # freeze the event loop - and every other request - while it waits. Offload blocking calls to a thread.
+        await run_in_threadpool(enqueue, "app.tasks.generate_daily_briefing")
     except Exception as exc:  # broker down
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "task queue unavailable") from exc
     return QueueOut(queued=True)

@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Dark-first developer-tool palette. Tokens use shadcn/ui's names so `npx shadcn add <component>` output
+   drops in unchanged. The app is dark only (color-scheme: dark); add a .light block to support both. */
+:root {
+  color-scheme: dark;
+  --background: #0a0b0e;
+  --foreground: #e6e8ec;
+  --card: #101216;
+  --card-foreground: #e6e8ec;
+  --muted: #161a20;
+  --muted-foreground: #8b92a0;
+  --border: #1f232b;
+  --input: #2a2f39;
+  --primary: #34d399;
+  --primary-foreground: #04130c;
+  --accent: #1a1f27;
+  --accent-foreground: #e6e8ec;
+  --destructive: #f87171;
+  --info: #60a5fa;
+  --warn: #fbbf24;
+  --violet: #a78bfa;
+  --ring: #34d399;
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-info: var(--info);
+  --color-warn: var(--warn);
+  --color-violet: var(--violet);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+@layer base {
+  * { border-color: var(--border); }
+  body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  ::selection { background: color-mix(in oklab, var(--primary) 30%, transparent); }
+}
