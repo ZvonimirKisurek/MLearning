@@ -45,6 +45,9 @@ def main() -> int:
     ing = sub.add_parser("ingest", help="run the ingestion pipeline once")
     ing.add_argument("--dry-run", action="store_true", help="fetch+parse only; no DB, no embeddings")
     ing.add_argument("--source", action="append", help="limit to slug (repeatable)")
+    lim = sub.add_parser("summarize", help="write AI summaries for recent articles that lack one")
+    lim.add_argument("--limit", type=int)
+    sub.add_parser("feed-stats", help="distribution of article-vs-skill similarity (calibrate MATCH_STRONG/MODERATE)")
     for name, help_ in (("generate-weekly", "generate next week's theme"), ("generate-daily", "generate today's briefing")):
         g = sub.add_parser(name, help=help_)
         g.add_argument("--force", action="store_true", help="regenerate even if one exists")
@@ -58,6 +61,27 @@ def main() -> int:
 
         specs = load_sources(get_settings().sources_file)
         print(f"synced {repository.upsert_sources(specs)} sources")
+        return 0
+    if args.cmd == "summarize":
+        from app.curriculum.summaries import summarize_pending
+
+        print(summarize_pending(limit=args.limit))
+        return 0
+    if args.cmd == "feed-stats":
+        from app.db import get_pool
+
+        with get_pool().connection() as conn:
+            r = conn.execute(
+                """select count(*) n, percentile_cont(array[0.1,0.25,0.5,0.75,0.9,0.99]) within group (order by sim) q from (
+                     select max(1 - (a.embedding <=> k.embedding)) sim from articles a cross join skills k
+                     where a.duplicate_of is null and a.embedding is not null and k.embedding is not null
+                       and coalesce(a.published_at, a.fetched_at) > now() - interval '14 days' group by a.id) t""").fetchone()
+        s = get_settings()
+        print(f"articles: {r['n']}")
+        if r["n"]:
+            print("best-skill cosine similarity percentiles  p10 p25 p50 p75 p90 p99:", [round(x, 3) for x in r["q"]])
+            print(f"current thresholds: strong>={s.match_strong}, moderate>={s.match_moderate}  "
+                  "(suggest: strong ~ p90, moderate ~ p50)")
         return 0
     if args.cmd in ("generate-weekly", "generate-daily"):
         import json

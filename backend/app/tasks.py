@@ -36,3 +36,10 @@ def generate_daily_briefing_task(self) -> dict:
 
     r = generate_daily_briefing()
     return {"day": r["day"], "cached": r["cached"]}
+
+
+@app.task(bind=True, name="app.tasks.summarize_recent_articles", autoretry_for=_TRANSIENT, retry_backoff=True, max_retries=3)
+def summarize_recent_articles_task(self) -> dict:
+    from app.curriculum.summaries import summarize_pending
+
+    return summarize_pending()

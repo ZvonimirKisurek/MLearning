@@ -46,7 +46,25 @@ class Settings(BaseSettings):
     candidate_window_days: int = 7
     max_per_source: int = 6  # diversity cap so one firehose (arXiv) can't fill the prompt
     min_candidates: int = 10
+    # --- AI summaries (cheap, high-volume => small model) ---
+    summary_model: str = "claude-haiku-5-5"
+    summary_effort: str = "low"
+    summary_batch_size: int = 10
+    summary_max_per_run: int = 60
+
+    # --- API ---
+    api_token: str = ""  # if set, every /api request needs "Authorization: Bearer <token>"
+    cors_origins: str = "http://localhost:3000"  # comma-separated
+    db_pool_size: int = 10
+    match_strong: float = 0.40  # cosine(article, skill) thresholds for the UI badge; calibrate with `cli feed-stats`
+    match_moderate: float = 0.28
+
     timezone: str = "UTC"  # IANA name; drives "today", the Sunday-night/morning schedules
+
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache

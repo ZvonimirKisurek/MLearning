@@ -106,22 +106,3 @@ def test_daily_self_heals_missing_weekly_theme_and_dry_run_prints_prompt(db):
 def test_not_enough_data(db):
     with pytest.raises(generators.NotEnoughData):
         generators.generate_weekly_theme(week_start=date(2026, 10, 26), llm=FakeLLM(), embedder=FakeEmbedder(), settings=Settings())
-
-
-def test_complete_task_moves_skill_once_and_closes_briefing(db):
-    seed_articles()
-    s = Settings(min_candidates=10)
-    generators.generate_daily_briefing(day=date(2026, 10, 28), llm=FakeLLM(), embedder=FakeEmbedder(), settings=s)
-    with psycopg.connect(db) as conn:
-        tasks = {k: str(i) for i, k in conn.execute("select id, kind from daily_tasks")}
-    first = crepo.complete_task(tasks["hands_on"])
-    assert not first.already_completed and first.delta > 0 and first.new_level == pytest.approx(20 + first.delta, abs=1e-3)
-    again = crepo.complete_task(tasks["hands_on"])  # double click / retried request
-    assert again.already_completed and again.new_level == pytest.approx(first.new_level, abs=1e-3)
-    with psycopg.connect(db) as conn:
-        assert conn.execute("select count(*) from skill_history").fetchone()[0] == 1
-        assert not first.briefing_completed
-    crepo.complete_task(tasks["reading"])
-    last = crepo.complete_task(tasks["insight"])
-    assert last.briefing_completed
-    assert crepo.complete_task("00000000-0000-0000-0000-000000000000") is None

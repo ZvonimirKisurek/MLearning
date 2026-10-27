@@ -140,3 +140,21 @@ class DailyBriefingOutput(_Strict):
         if total > 120:
             raise ValueError(f"reading + hands-on must fit in 120 minutes, got {total}")
         return self
+
+
+# ------------------------------------------------------------------------------ article summaries
+class ArticleSummary(_Strict):
+    id: ArticleRef
+    summary: Text = Field(max_length=360, description="1-2 neutral sentences using only the supplied title and excerpt")
+
+
+class SummaryBatch(_Strict):
+    summaries: list[ArticleSummary]
+
+    @model_validator(mode="after")
+    def _covers_every_article(self, info: ValidationInfo) -> SummaryBatch:
+        g = _grounding(info)
+        ids = [s.id for s in self.summaries]
+        if len(ids) != len(set(ids)) or (g is not None and set(ids) != set(g.article_ids)):
+            raise ValueError("return exactly one summary for every supplied article id, each once")
+        return self

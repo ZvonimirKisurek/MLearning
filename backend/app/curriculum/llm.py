@@ -46,7 +46,8 @@ class StructuredLLM:
         self._s = settings
         self._client = client or anthropic.Anthropic(api_key=settings.anthropic_api_key or None, max_retries=settings.llm_sdk_retries)
 
-    def generate(self, *, system: str, user: str, output_model: type[T], grounding: GroundingContext) -> T:
+    def generate(self, *, system: str, user: str, output_model: type[T], grounding: GroundingContext,
+                 model: str | None = None, effort: str | None = None) -> T:
         s = self._s
         # transform_schema = Pydantic JSON Schema minus constraints the API grammar can't express
         # (min/max/length); those remain enforced by Pydantic on our side.
@@ -55,8 +56,8 @@ class StructuredLLM:
         last_errors = ""
         for attempt in range(s.llm_max_repairs + 1):
             kwargs: dict = dict(
-                model=s.llm_model, max_tokens=s.llm_max_tokens, system=system, messages=messages,
-                output_config={"effort": s.llm_effort, "format": {"type": "json_schema", "schema": schema}},
+                model=model or s.llm_model, max_tokens=s.llm_max_tokens, system=system, messages=messages,
+                output_config={"effort": effort or s.llm_effort, "format": {"type": "json_schema", "schema": schema}},
             )
             resp = self._client.messages.create(**kwargs)
             log.info("llm attempt=%d in=%s out=%s stop=%s", attempt, resp.usage.input_tokens, resp.usage.output_tokens, resp.stop_reason)
