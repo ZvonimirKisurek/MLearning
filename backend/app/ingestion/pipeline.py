@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+
+import httpx
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -10,12 +12,25 @@ from app.config import Settings, get_settings
 from app.ingestion import repository as repo
 from app.ingestion.embeddings import Embedder, OpenAIEmbedder, embedding_input
 from app.ingestion.fetchers import FETCHERS
-from app.ingestion.http import PoliteClient
+from app.ingestion.http import PoliteClient, RobotsDisallowed
 from app.ingestion.models import RawItem, SourceOutcome, SourceSkipped, SourceSpec, SourceState
 from app.ingestion.parsers import canonicalize_url, url_hash
 from app.ingestion.sources import load_sources
 
 log = logging.getLogger(__name__)
+
+
+def classify_error(exc: Exception) -> str:
+    """Bucket a fetch failure so `ingest --dry-run` can tell you *what kind* of fix a source needs."""
+    if isinstance(exc, RobotsDisallowed):
+        return "robots"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return "http"
+    if isinstance(exc, httpx.TransportError):
+        return "network"
+    if isinstance(exc, (ValueError, KeyError, TypeError, IndexError)):  # bad XML/JSON/HTML shape
+        return "parse"
+    return "other"
 
 
 def breaker_open(state: SourceState, settings: Settings, now: datetime | None = None) -> bool:
@@ -51,6 +66,7 @@ async def fetch_all(
                     out.skipped = str(exc)
                 except Exception as exc:  # isolate: one broken source must never sink the run
                     out.error = f"{exc.__class__.__name__}: {exc}"
+                    out.error_kind = classify_error(exc)
         return out
 
     try:

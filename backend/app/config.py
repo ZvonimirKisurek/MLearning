@@ -35,6 +35,19 @@ class Settings(BaseSettings):
 
     sources_file: str = "sources/sources.yaml"
 
+    # --- LLM / curriculum engine ---
+    anthropic_api_key: str = ""
+    llm_model: str = "claude-sonnet-5-5"
+    llm_effort: str = "medium"  # low|medium|high|xhigh|max: how hard the model thinks before answering
+    llm_max_tokens: int = 16000  # thinking tokens count against this too
+    llm_max_repairs: int = 2  # re-prompts after a validation failure before giving up
+    llm_sdk_retries: int = 5  # SDK-level exponential backoff on 429/5xx/connection errors
+    prompt_article_count: int = 50  # articles injected into the prompt
+    candidate_window_days: int = 7
+    max_per_source: int = 6  # diversity cap so one firehose (arXiv) can't fill the prompt
+    min_candidates: int = 10
+    timezone: str = "UTC"  # IANA name; drives "today", the Sunday-night/morning schedules
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -34,7 +34,7 @@ frontend/                Next.js app (Step 5)
 |---|---|---|
 | 1 | Repo, schema, Supabase connection | done |
 | 2 | Scrapers, parsers, embeddings, dedup, Celery beat | done (untested against live DB/feeds, see below) |
-| 3 | Prompt engineering + weekly/daily generators, Pydantic output validation | next |
+| 3 | Prompt engineering + weekly/daily generators, Pydantic output validation, skill matrix | done (tested with a fake LLM + real Postgres; not yet with a live Anthropic key) |
 | 4 | FastAPI endpoints (`/briefing/today`, complete task, feed, skills) | |
 | 5 | Next.js + shadcn/ui dashboard | |
 
@@ -49,6 +49,37 @@ python -m app.cli ingest                  # full pipeline once
 celery -A app.celery_app worker -l info & celery -A app.celery_app beat -l info
 ```
 **Supabase:** `supabase link && supabase db push`, then set `DATABASE_URL` to the connection string (session pooler works; transaction pooler works too since prepared statements are disabled).
+
+## How the intelligence layer works (read this to learn the ML concepts)
+
+```
+skills ──embed──► query vectors ─┐
+articles (already embedded) ─────┴─► cosine similarity ─► rank ─► top 50 ─► PROMPT ─► Claude ─► JSON ─► validate ─► DB
+                                                                              ▲                         │ errors
+                                                                              └──── repair loop ◄───────┘
+weekly theme (JSON) ──────────────────────────────► daily prompt  (prompt chaining)
+```
+
+**Embeddings.** A model turns text into a point in 1536-d space so that *meaning* becomes *geometry*: similar texts land close together. Closeness is measured by cosine similarity (the angle between vectors; 1 = same direction, ~0 = unrelated). We use it twice: Phase 1 dedup (two headlines about one event are ~0.9+ similar) and Phase 2 retrieval (an article vs. a skill description such as "PyTorch: autograd, training loops...").
+
+**RAG (retrieval-augmented generation).** An LLM only knows its training data and has a finite, expensive context window. RAG = *retrieve* the few documents relevant to the question, then *augment* the prompt with them so the model generates from evidence instead of memory. Here the "question" is "what should I learn this week/today", the knowledge base is this week's ~1000 ingested articles, and `curriculum/ranking.py` is the retriever (a matrix multiply of article vectors by skill vectors, blended with source quality, recency and engagement). Retrieval is also our best hallucination control: the model picks among 50 real articles rather than recalling "a good paper on RAG", which is where invented citations come from.
+
+**Prompt chaining.** Two small calls instead of one giant one. The weekly call outputs a validated plan; the daily call takes that plan plus recent results as input. Each step has a narrow job, the intermediate result is stored and inspectable, and a bad step can be retried alone.
+
+**Structured output + Pydantic.** The JSON Schema generated from the Pydantic classes in `curriculum/schemas.py` is sent to the API, which uses *constrained decoding* (invalid tokens are masked at each step), so the output always parses and has every field. It cannot enforce *values*, so Pydantic validates what the schema cannot express (ranges, list sizes, "this article id was one we showed you", "no URLs in free text"). On failure the exact error locations are sent back and the model repairs its answer (`curriculum/llm.py`).
+
+**Anti-hallucination, in layers:** (1) the model cites articles by short id `A1..A50`, and code resolves ids to URLs; (2) validators reject unknown ids/skills and any URL; (3) retrieval supplies the evidence; (4) prompt rules require claims to trace to supplied text and API signatures to be checked in docs; (5) scraped text is XML-escaped and declared untrusted (prompt-injection defence).
+
+**Temperature.** It rescales token probabilities before sampling (low = near-deterministic, high = varied). Current Claude models no longer accept it, so determinism here comes from constrained decoding, a closed evidence set, validation, and `LLM_EFFORT` (how much the model thinks, not how random it is). See the docstring in `curriculum/prompts.py`.
+
+**Skill matrix.** Deterministic, auditable code (`curriculum/skills.py`), not an LLM opinion: `delta = base[kind] * difficulty * headroom(level)`, with diminishing returns near 100. It is a motivation heuristic, not a measurement of competence. Completion is atomic and idempotent (a conditional `UPDATE ... WHERE completed_at IS NULL`), so double-clicks can't double-award.
+
+```bash
+python -m app.cli generate-weekly --dry-run   # prints the exact system + user prompt; no API call, nothing stored
+python -m app.cli generate-weekly             # needs ANTHROPIC_API_KEY, OPENAI_API_KEY (skill embeddings) and ingested articles
+python -m app.cli generate-daily [--force]
+pytest                                        # includes real-Postgres integration tests (embedded pgvector via pixeltable-pgserver)
+```
 
 ## Design notes
 - **Politeness:** every request carries `USER_AGENT`; robots.txt is fetched per host and enforced (fails closed if unreachable/5xx, per RFC 9309); 1s min interval per host; 429/5xx → exponential backoff with jitter, honouring `Retry-After`; conditional GET (ETag/Last-Modified) → cheap 304s.

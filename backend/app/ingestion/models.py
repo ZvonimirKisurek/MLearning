@@ -60,6 +60,7 @@ class SourceOutcome:
     state: SourceState
     result: FetchResult | None = None
     error: str | None = None
+    error_kind: str | None = None  # network | http | robots | parse | other
     skipped: str | None = None  # reason, e.g. "circuit breaker", "missing credentials"
 
 
