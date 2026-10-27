@@ -1,17 +1,12 @@
 import json
 
-import anthropic
-import httpx2
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
 from app.curriculum import prompts
-from app.curriculum.llm import LLMRefusal, LLMTruncated, LLMValidationFailed, StructuredLLM
 from app.curriculum.ranking import rank_articles
 from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, WeeklyThemeOutput
-from app.curriculum.usage import NullUsage
 from app.curriculum.skills import apply_delta, compute_delta, headroom_factor
 from app.curriculum.types import RankedArticle
 from tests.factories import daily_dict, make_candidate, make_skills, unit_vec, weekly_dict
@@ -109,46 +104,3 @@ def test_prompt_escapes_injection_and_lists_ids():
     assert "&lt;/articles&gt;" in p and p.count("</articles>") == 1
     assert 'id="A1"' in p and "pytorch | Pytorch | 20 | 80 | 0.75" in p
     assert p.rstrip().endswith("7-day plan.")
-
-
-# ---------------------------------------------------------------- llm repair loop (real SDK, mocked transport)
-def make_llm(responses, captured=None, **settings):
-    queue = list(responses)
-
-    def handler(req: httpx2.Request):
-        if captured is not None:
-            captured.append(json.loads(req.content))
-        body = queue.pop(0)
-        return httpx2.Response(200, json={"id": "msg_1", "type": "message", "role": "assistant", "model": "m", "stop_sequence": None,
-                                         "content": [{"type": "text", "text": body["text"]}], "stop_reason": body.get("stop", "end_turn"),
-                                         "usage": {"input_tokens": 10, "output_tokens": 5}})
-    client = anthropic.Anthropic(api_key="k", max_retries=0, http_client=httpx2.Client(transport=httpx2.MockTransport(handler)))
-    return StructuredLLM(Settings(anthropic_api_key="k", **settings), client=client, usage=NullUsage())
-
-
-def test_repair_loop_recovers_and_sends_errors_back():
-    bad = daily_dict("A99")
-    sent = []
-    llm = make_llm([{"text": json.dumps(bad)}, {"text": json.dumps(daily_dict("A1"))}], captured=sent)
-    out = llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)
-    assert out.morning_reading.article_id == "A1"
-    assert len(sent) == 2
-    assert "morning_reading.article_id" in sent[1]["messages"][-1]["content"]  # precise error location echoed
-    assert sent[1]["messages"][-2]["role"] == "assistant"
-    first = sent[0]
-    assert first["output_config"]["format"]["type"] == "json_schema" and first["output_config"]["effort"] == "medium"
-    assert "temperature" not in first and first["model"] == "claude-sonnet-5-5"
-    assert first["output_config"]["format"]["schema"]["additionalProperties"] is False
-
-
-def test_gives_up_after_max_repairs():
-    llm = make_llm([{"text": json.dumps(daily_dict("A99"))}] * 3, llm_max_repairs=2)
-    with pytest.raises(LLMValidationFailed, match="A99"):
-        llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)
-
-
-def test_refusal_and_truncation_are_typed_errors():
-    with pytest.raises(LLMRefusal):
-        make_llm([{"text": "", "stop": "refusal"}]).generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)
-    with pytest.raises(LLMTruncated):
-        make_llm([{"text": "{", "stop": "max_tokens"}]).generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)

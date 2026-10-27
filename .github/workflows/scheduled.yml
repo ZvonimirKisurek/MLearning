@@ -31,7 +31,6 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       USER_AGENT: ${{ vars.USER_AGENT }}
       TIMEZONE: ${{ vars.TIMEZONE || 'UTC' }}
       ROADMAP_START: ${{ vars.ROADMAP_START }}

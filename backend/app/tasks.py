@@ -1,6 +1,6 @@
 import logging
 
-import anthropic
+import openai
 import psycopg
 
 from app.celery_app import app
@@ -18,8 +18,9 @@ def ingest_all(self) -> dict:
     return run_ingestion(trigger="beat")
 
 # Transient infrastructure errors are retried with exponential backoff. LLMValidationFailed / LLMRefusal /
-# NotEnoughData are NOT retried here: repeating the identical request will not change the outcome.
-_TRANSIENT = (anthropic.APIConnectionError, anthropic.RateLimitError, anthropic.InternalServerError, psycopg.OperationalError)
+# LLMBudgetExceeded (incl. 'insufficient_quota', which StructuredLLM converts) / NotEnoughData are NOT retried here:
+# repeating the identical request will not change the outcome.
+_TRANSIENT = (openai.APIConnectionError, openai.APITimeoutError, openai.RateLimitError, openai.InternalServerError, psycopg.OperationalError)
 
 
 @app.task(bind=True, name="app.tasks.generate_weekly_theme", autoretry_for=_TRANSIENT, retry_backoff=True, retry_backoff_max=900, max_retries=4)

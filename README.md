@@ -34,7 +34,7 @@ frontend/                Next.js app (Step 5)
 |---|---|---|
 | 1 | Repo, schema, Supabase connection | done |
 | 2 | Scrapers, parsers, embeddings, dedup, Celery beat | done (untested against live DB/feeds, see below) |
-| 3 | Prompt engineering + weekly/daily generators, Pydantic output validation, skill matrix | done (tested with a fake LLM + real Postgres; not yet with a live Anthropic key) |
+| 3 | Prompt engineering + weekly/daily generators, Pydantic output validation, skill matrix | done (tested with a fake LLM + real Postgres; not yet with a live OpenAI key) |
 | 4 | FastAPI endpoints (today, complete task, feed, skills) + AI summaries | done (62 tests incl. real-Postgres API tests) |
 | 5 | Next.js dashboard (Command Center + Intelligence Feed) | done (production build + real-browser checks against the real API on demo data) |
 
@@ -60,7 +60,7 @@ celery -A app.celery_app worker -l info & celery -A app.celery_app beat -l info
 
 ```
 skills ──embed──► query vectors ─┐
-articles (already embedded) ─────┴─► cosine similarity ─► rank ─► top 50 ─► PROMPT ─► Claude ─► JSON ─► validate ─► DB
+articles (already embedded) ─────┴─► cosine similarity ─► rank ─► top 50 ─► PROMPT ─► OpenAI (strict JSON Schema) ─► JSON ─► validate ─► DB
                                                                               ▲                         │ errors
                                                                               └──── repair loop ◄───────┘
 weekly theme (JSON) ──────────────────────────────► daily prompt  (prompt chaining)
@@ -76,13 +76,13 @@ weekly theme (JSON) ────────────────────
 
 **Anti-hallucination, in layers:** (1) the model cites articles by short id `A1..A50`, and code resolves ids to URLs; (2) validators reject unknown ids/skills and any URL; (3) retrieval supplies the evidence; (4) prompt rules require claims to trace to supplied text and API signatures to be checked in docs; (5) scraped text is XML-escaped and declared untrusted (prompt-injection defence).
 
-**Temperature.** It rescales token probabilities before sampling (low = near-deterministic, high = varied). Current Claude models no longer accept it, so determinism here comes from constrained decoding, a closed evidence set, validation, and `LLM_EFFORT` (how much the model thinks, not how random it is). See the docstring in `curriculum/prompts.py`.
+**Temperature.** It rescales token probabilities before sampling (low = near-deterministic, high = varied). This app sets it per task (`TEMP_WEEKLY` 0.6, `TEMP_DAILY` 0.3, `TEMP_SUMMARY` 0.2), but it is only one lever: constrained decoding, a closed evidence set, validation + repair and an optional `LLM_SEED` matter as much. See the docstring in `curriculum/prompts.py`.
 
 **Skill matrix.** Deterministic, auditable code (`curriculum/skills.py`), not an LLM opinion: `delta = base[kind] * difficulty * headroom(level)`, with diminishing returns near 100. It is a motivation heuristic, not a measurement of competence. Completion is atomic and idempotent (a conditional `UPDATE ... WHERE completed_at IS NULL`), so double-clicks can't double-award.
 
 ```bash
 python -m app.cli generate-weekly --dry-run   # prints the exact system + user prompt; no API call, nothing stored
-python -m app.cli generate-weekly             # needs ANTHROPIC_API_KEY, OPENAI_API_KEY (skill embeddings) and ingested articles
+python -m app.cli generate-weekly             # needs OPENAI_API_KEY and ingested articles
 python -m app.cli generate-daily [--force]
 pytest                                        # includes real-Postgres integration tests (embedded pgvector via pixeltable-pgserver)
 ```

@@ -2,30 +2,29 @@
 
 ## Cost: estimate for one week (1 user)
 Measured on this code with realistic article lengths: ~11,000 input tokens per weekly or daily generation (50 articles +
-prompt + schema), ~180 per article for summaries. Prices (cached 2026-10-06; verify): Sonnet 5.5 $2 in / $10 out per MTok,
-Haiku 5.5 $0.10 / $0.50, OpenAI text-embedding-3-small ~$0.02 per MTok (from memory). Thinking tokens bill as output and are the main unknown.
+prompt + schema), ~180 per article for summaries. Prices (from memory, verify on OpenAI's pricing page): gpt-4o $2.50 in / $10 out
+per MTok, gpt-4o-mini $0.15 / $0.60, text-embedding-3-small ~$0.02. gpt-4o has no hidden reasoning tokens, so output is just the JSON (~1.5-2k tokens).
 
 | Item | Volume / week | Assumption | Cost |
 |---|---|---|---|
-| Daily + weekly generation (Sonnet 5.5) | 8 calls | 11k in; ~1.5k JSON + 1.5-6k thinking out | $0.05-0.10 each => **$0.42-0.78** |
-| Summaries (Haiku 5.5) | <= ~400/day | 10-article batches, ~2k in / ~1.5k out | <= $0.04/day => **<= $0.28** |
-| Embeddings (OpenAI) | ~500 new items/day | ~120 tokens each | **~$0.01** |
-| **Typical total** | | | **about $0.7-1.1 per week (~$3-5/month)** |
-| Worst plausible (every generation needs 2 repairs) | | ~3x generation | ~$2-3 per week |
+| Daily + weekly generation (gpt-4o) | 8 calls | 11k in, ~1.7k out | ~$0.045 each => **~$0.36** |
+| Summaries (gpt-4o-mini) | <= ~400/day | 10-article batches, ~2k in / ~1k out | <= $0.04/day => **<= $0.25** |
+| Embeddings | ~500 new items/day | ~120 tokens each | **~$0.01** |
+| **Typical total** | | | **about $0.6 per week (~$2.5/month)** |
+| Worst plausible (every generation needs 2 repairs) | | ~3x generation | ~$1.5 per week |
 
-The first day adds ~$0.02 (first ingest embeds ~1,500 items; 120 summaries). After day 1 run `python -m app.cli usage` for real numbers;
-if it is higher than expected, lower `LLM_EFFORT` to `low`.
+The first day adds ~$0.02 (first ingest embeds ~1,500 items; 120 summaries). After day 1 run `python -m app.cli usage` for real numbers.
+Models you add must also be added to the price table in `curriculum/usage.py`; unknown models are priced at a conservative high tier.
 
 ## Spend limits (the app's request rate is tiny, so cap SPEND, not requests)
-Peak load is one summary batch every few seconds for ~1 minute, a few times a day: tens of requests per hour. Provider-side:
-1. **Anthropic Console:** create a separate workspace and key for this app. Set a monthly spend limit of ~$10, load a small prepaid balance
-   (~$10-20) with auto-reload OFF (that balance is a hard ceiling), and turn on low-balance email alerts. If workspace rate limits are available, ~20-30 requests/min and ~50k input tokens/min is >2x the app's peak.
-2. **OpenAI:** a dedicated project and key; a project monthly budget of ~$2; prepaid credits with auto-recharge OFF; if keys can be restricted by permission, allow only Embeddings.
-Exact menu names change: look under Billing / Limits in each console.
-3. **In the app (`LLM_DAILY_BUDGET_USD`, default $1.00):** every Claude call is logged to `llm_usage` and refused once the last 24h reach the cap, whatever
+Peak load is one summary batch every few seconds for ~1 minute, a few times a day: tens of requests per hour. Provider-side (one provider now):
+1. **OpenAI:** a dedicated project and key for this app; a project monthly budget of ~$5; prepaid credits with auto-recharge OFF (that balance is a
+   hard ceiling); if keys can be restricted by permission, allow only Chat completions and Embeddings; if per-model project rate limits are available,
+   ~20-30 requests/min and ~60k tokens/min is >2x the app's peak. Exact menu names change: look under Settings > Limits / Billing.
+2. **In the app (`LLM_DAILY_BUDGET_USD`, default $1.00):** every chat call is logged to `llm_usage` and refused once the last 24h reach the cap, whatever
    triggered it (retry storm, stuck scheduler, double-running cron). It is an *estimate* from a price table (`curriculum/usage.py`), so keep the provider limits as the backstop.
-   It does not track OpenAI embeddings (negligible). `python -m app.cli usage` shows where money went.
-4. **Leaving the worker running:** every LLM path goes through the cap; retries are bounded (Celery max 3-4 with backoff, repair loop max 2); jobs are idempotent per day/week.
+   It does not track embeddings (negligible). `python -m app.cli usage` shows where money went. When OpenAI itself reports `insufficient_quota`, the app stops and does not retry.
+3. **Leaving the worker running:** every LLM path goes through the cap; retries are bounded (Celery max 3-4 with backoff, repair loop max 2); jobs are idempotent per day/week.
    Do not run Celery beat AND the GitHub cron: that doubles cost (never unbounded).
 
 ## Security before a public deployment

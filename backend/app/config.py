@@ -36,10 +36,13 @@ class Settings(BaseSettings):
     sources_file: str = "sources/sources.yaml"
 
     # --- LLM / curriculum engine ---
-    anthropic_api_key: str = ""
-    llm_model: str = "claude-sonnet-5-5"
-    llm_effort: str = "medium"  # low|medium|high|xhigh|max: how hard the model thinks before answering
-    llm_max_tokens: int = 16000  # thinking tokens count against this too
+    llm_model: str = "gpt-4o"  # must support Structured Outputs (gpt-4o-2024-08-06 or later). Check your account's model list
+    llm_max_tokens: int = 8000  # max completion tokens per call (gpt-4o allows up to 16k)
+    llm_seed: int | None = None  # set for best-effort reproducible outputs
+    # Sampling temperature per task (OpenAI chat models accept it; reasoning models such as o-series/gpt-5 do not).
+    temp_weekly: float = 0.6  # planning a theme benefits from some variety
+    temp_daily: float = 0.3  # stay close to the evidence
+    temp_summary: float = 0.2  # near-deterministic restating
     llm_max_repairs: int = 2  # re-prompts after a validation failure before giving up
     llm_daily_budget_usd: float = 1.0  # hard cap on estimated LLM spend per rolling 24h (typical use is ~$0.15/day)
     llm_sdk_retries: int = 5  # SDK-level exponential backoff on 429/5xx/connection errors
@@ -48,8 +51,7 @@ class Settings(BaseSettings):
     max_per_source: int = 6  # diversity cap so one firehose (arXiv) can't fill the prompt
     min_candidates: int = 10
     # --- AI summaries (cheap, high-volume => small model) ---
-    summary_model: str = "claude-haiku-5-5"
-    summary_effort: str = "low"
+    summary_model: str = "gpt-4o-mini"
     summary_batch_size: int = 10
     summary_max_per_run: int = 60
 

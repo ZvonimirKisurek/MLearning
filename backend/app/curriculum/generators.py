@@ -1,7 +1,7 @@
 """Orchestration: retrieve -> build prompt -> generate (validated) -> enrich with real URLs -> store.
 
     skills (+embeddings) ─┐
-    last 7d articles ─────┼─► rank_articles (top 50) ─► prompt ─► Claude ─► validated JSON ─► + URLs ─► DB
+    last 7d articles ─────┼─► rank_articles (top 50) ─► prompt ─► LLM ─► validated JSON ─► + URLs ─► DB
     weekly theme/history ─┘
 
 Both generators are idempotent per week/day (a re-run returns the stored row) so Celery retries and
@@ -94,7 +94,8 @@ def generate_weekly_theme(
     grounding = _grounding(articles, skills)
     if active:  # the repair loop will make the model fix a plan that drifts from the roadmap
         grounding = GroundingContext(grounding.article_ids, grounding.skill_slugs, frozenset(active[1].focus_skills))
-    out = (llm or StructuredLLM(settings)).generate(system=system, user=user, output_model=WeeklyThemeOutput, grounding=grounding)
+    out = (llm or StructuredLLM(settings)).generate(system=system, user=user, output_model=WeeklyThemeOutput, grounding=grounding,
+                                                  temperature=settings.temp_weekly)
     by_id = {a.short_id: a for a in articles}
     payload = out.model_dump()
     if active:
@@ -136,7 +137,8 @@ def generate_daily_briefing(
         return {"system": prompts.DAILY_SYSTEM, "user": user, "articles": len(articles)}
 
     out = (llm or StructuredLLM(settings)).generate(
-        system=prompts.DAILY_SYSTEM, user=user, output_model=DailyBriefingOutput, grounding=_grounding(articles, skills))
+        system=prompts.DAILY_SYSTEM, user=user, output_model=DailyBriefingOutput, grounding=_grounding(articles, skills),
+        temperature=settings.temp_daily)
     by_id = {a.short_id: a for a in articles}
     payload = out.model_dump()
     payload["morning_reading"].update(_article_ref(by_id[out.morning_reading.article_id]))

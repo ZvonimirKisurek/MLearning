@@ -16,11 +16,10 @@ from app.db import get_pool
 
 log = logging.getLogger(__name__)
 
-# USD per million tokens: (input, output). Thinking tokens are billed as output.
+# USD per million tokens: (input, output). Reasoning tokens (reasoning models only) are billed as output.
 PRICES: dict[str, tuple[float, float]] = {
-    "claude-sonnet-5-5": (2.0, 10.0), "claude-sonnet-5": (2.0, 10.0), "claude-haiku-5-5": (0.10, 0.50),
-    "claude-opus-5-5": (4.0, 20.0), "claude-opus-5": (5.0, 25.0), "claude-fable-5-1": (10.0, 50.0),
-}
+    "gpt-4o": (2.50, 10.00), "gpt-4o-2024-08-06": (2.50, 10.00), "gpt-4o-mini": (0.15, 0.60),
+}  # from memory: verify against OpenAI's pricing page and add the models you use
 UNKNOWN_MODEL_PRICE = (10.0, 50.0)
 
 

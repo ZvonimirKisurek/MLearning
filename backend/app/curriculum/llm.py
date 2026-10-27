@@ -1,26 +1,35 @@
-"""Anthropic client wrapper: schema-constrained generation + validation + repair loop.
+"""OpenAI client wrapper: schema-constrained generation + Pydantic validation + repair loop.
 
 Control flow of `StructuredLLM.generate`:
 
-    prompt ──► Claude (JSON-schema constrained) ──► Pydantic validate (+ grounding context)
-                    ▲                                     │ ok  ──► return typed object
-                    │                                     │ fail
-                    └──── append the model's answer and the exact validation errors ◄──┘  (max N times)
+    prompt ──► OpenAI chat completion (response_format = strict JSON Schema) ──► Pydantic validate (+ grounding context)
+                    ▲                                                                 │ ok  ──► return typed object
+                    │                                                                 │ fail
+                    └──── append the model's answer and the exact validation errors ◄─┘  (max N times)
 
-Why a repair loop? Constrained decoding guarantees the JSON *parses and has the right fields*, not that its
-*values are acceptable* (an article id we never showed it, a URL, 9 steps when the limit is 8). Showing the
-model its own output plus a precise error list is cheap and almost always fixes it on the first retry -
-far more reliable than hoping a stricter prompt prevents every mistake.
+OPENAI STRUCTURED OUTPUTS, IN ONE PARAGRAPH. With `response_format={"type": "json_schema", "json_schema":
+{"name": ..., "strict": True, "schema": ...}}` the server compiles the schema into a grammar and, while the model
+generates, masks every token that would violate it (constrained decoding). Output therefore always parses and has
+every field with the right type. It does NOT enforce *values*: strict mode supports only a subset of JSON Schema, and
+"this id must be one we showed you" cannot be expressed in a schema at all. That is the job of the Pydantic
+validators in schemas.py, run here with `context=grounding`; a failure triggers the repair loop below.
 
-Reliability layers: the SDK retries 429/5xx/connection errors with exponential backoff (llm_sdk_retries);
-refusals and truncation are surfaced as typed errors rather than silently parsed; Celery adds an outer retry.
+Why a repair loop? Showing the model its own output plus a precise error list is cheap and almost always fixes the
+problem on the first retry, far more reliable than hoping a stricter prompt prevents every mistake.
+
+Reliability layers: the SDK retries 429/5xx/connection errors with exponential backoff (llm_sdk_retries); refusals,
+truncation and an exhausted account are typed errors, never silently parsed; the spend cap is checked before every
+attempt; Celery adds an outer retry for transient failures.
+
+This client is synchronous on purpose: every caller (Celery tasks, the CLI, the inline job thread) is synchronous and
+calls are sequential by design, so an async client would only add event-loop plumbing.
 """
 from __future__ import annotations
 
 import logging
-from typing import TypeVar
+from typing import Any, TypeVar
 
-import anthropic
+import openai
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings
@@ -31,7 +40,48 @@ from app.curriculum.usage import DbUsage
 log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
+# JSON-Schema keywords that strict mode may or may not accept depending on model and date. We never send them:
+# they are folded into the field description (so the model still sees the limit) and Pydantic enforces them.
+_CONSTRAINT_KEYS = ("minLength", "maxLength", "minItems", "maxItems", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "pattern")
 
+
+def _hint(node: dict[str, Any]) -> str:
+    parts = []
+    if "minLength" in node or "maxLength" in node:
+        parts.append(f"{node.get('minLength', 0)}-{node['maxLength']} characters" if "maxLength" in node else f"at least {node['minLength']} characters")
+    if "minItems" in node or "maxItems" in node:
+        lo, hi = node.get("minItems"), node.get("maxItems")
+        parts.append(f"exactly {lo} items" if lo is not None and lo == hi else f"{lo or 0}-{hi} items" if hi is not None else f"at least {lo} items")
+    if "minimum" in node or "maximum" in node:
+        parts.append(f"between {node.get('minimum', '-inf')} and {node.get('maximum', 'inf')}")
+    return "; ".join(parts)
+
+
+def _relax(node: Any) -> Any:
+    if isinstance(node, list):
+        return [_relax(n) for n in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for key, value in node.items():
+        # `properties`/`$defs` map NAMES to schemas: recurse into the values, never treat the map itself as a schema.
+        out[key] = {k: _relax(v) for k, v in value.items()} if key in ("properties", "$defs") else _relax(value)
+    hint = _hint(out)
+    for k in _CONSTRAINT_KEYS:
+        out.pop(k, None)
+    if hint:
+        out["description"] = f"{out['description']} [{hint}]" if out.get("description") else f"[{hint}]"
+    return out
+
+
+def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
+    """Pydantic model -> JSON Schema that OpenAI strict mode accepts.
+
+    `openai.pydantic_function_tool` (public SDK helper) does the strict-mode rewrite: additionalProperties=false on
+    every object, every property listed in `required` (optional fields become nullable), $refs resolved.
+    `_relax` then removes value constraints; Pydantic keeps enforcing them after generation.
+    """
+    return _relax(openai.pydantic_function_tool(model, name=model.__name__)["function"]["parameters"])
 
 
 def format_errors(exc: ValidationError) -> str:
@@ -40,34 +90,41 @@ def format_errors(exc: ValidationError) -> str:
 
 
 class StructuredLLM:
-    def __init__(self, settings: Settings, client: anthropic.Anthropic | None = None, usage=None) -> None:
+    def __init__(self, settings: Settings, client: openai.OpenAI | None = None, usage=None) -> None:
         self._s = settings
         self._usage = usage or DbUsage(settings)
-        self._client = client or anthropic.Anthropic(api_key=settings.anthropic_api_key or None, max_retries=settings.llm_sdk_retries)
+        self._client = client or openai.OpenAI(api_key=settings.openai_api_key or None, max_retries=settings.llm_sdk_retries)
 
     def generate(self, *, system: str, user: str, output_model: type[T], grounding: GroundingContext,
-                 model: str | None = None, effort: str | None = None) -> T:
+                 model: str | None = None, temperature: float | None = None) -> T:
         s = self._s
-        # transform_schema = Pydantic JSON Schema minus constraints the API grammar can't express
-        # (min/max/length); those remain enforced by Pydantic on our side.
-        schema = anthropic.transform_schema(output_model)
-        messages: list[dict] = [{"role": "user", "content": user}]
+        model = model or s.llm_model
+        response_format = {"type": "json_schema", "json_schema": {"name": output_model.__name__, "strict": True, "schema": strict_schema(output_model)}}
+        messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         last_errors = ""
         for attempt in range(s.llm_max_repairs + 1):
-            kwargs: dict = dict(
-                model=model or s.llm_model, max_tokens=s.llm_max_tokens, system=system, messages=messages,
-                output_config={"effort": effort or s.llm_effort, "format": {"type": "json_schema", "schema": schema}},
-            )
             self._usage.check()  # hard daily cap: refuse BEFORE spending, on every attempt including repairs
-            resp = self._client.messages.create(**kwargs)
-            self._usage.record(output_model.__name__, kwargs["model"], resp.usage.input_tokens, resp.usage.output_tokens)
-            log.info("llm attempt=%d in=%s out=%s stop=%s", attempt, resp.usage.input_tokens, resp.usage.output_tokens, resp.stop_reason)
+            kwargs: dict[str, Any] = dict(model=model, messages=messages, response_format=response_format, max_completion_tokens=s.llm_max_tokens)
+            if temperature is not None:
+                kwargs["temperature"] = temperature  # sampling temperature: see the explanation in prompts.py
+            if s.llm_seed is not None:
+                kwargs["seed"] = s.llm_seed  # best-effort reproducibility
+            try:
+                resp = self._client.chat.completions.create(**kwargs)
+            except openai.RateLimitError as exc:
+                if getattr(exc, "code", None) == "insufficient_quota":  # out of credits is not transient: do not retry
+                    raise LLMBudgetExceeded("OpenAI reports insufficient quota: the account's credit/budget limit was reached") from exc
+                raise
+            choice = resp.choices[0]
+            if resp.usage:
+                self._usage.record(output_model.__name__, model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
+            log.info("llm attempt=%d model=%s finish=%s tokens=%s", attempt, model, choice.finish_reason, resp.usage and resp.usage.total_tokens)
 
-            if resp.stop_reason == "refusal":
-                raise LLMRefusal(f"model refused: {getattr(resp, 'stop_details', None)}")
-            if resp.stop_reason == "max_tokens":
-                raise LLMTruncated(f"output hit max_tokens={s.llm_max_tokens}; raise LLM_MAX_TOKENS or lower LLM_EFFORT")
-            text = next((b.text for b in resp.content if b.type == "text"), "")
+            if choice.message.refusal or choice.finish_reason == "content_filter":
+                raise LLMRefusal(f"model refused: {choice.message.refusal or 'content filter'}")
+            if choice.finish_reason == "length":
+                raise LLMTruncated(f"output hit max_completion_tokens={s.llm_max_tokens}; raise LLM_MAX_TOKENS")
+            text = choice.message.content or ""
             try:
                 return output_model.model_validate_json(text, context=grounding)
             except ValidationError as exc:
@@ -75,7 +132,6 @@ class StructuredLLM:
                 log.warning("validation failed (attempt %d):\n%s", attempt, last_errors)
                 messages += [
                     {"role": "assistant", "content": text},
-                    {"role": "user", "content": "Your JSON failed validation:\n" + last_errors
-                     + "\nReturn the complete corrected JSON object."},
+                    {"role": "user", "content": "Your JSON failed validation:\n" + last_errors + "\nReturn the complete corrected JSON object."},
                 ]
         raise LLMValidationFailed(f"still invalid after {s.llm_max_repairs} repairs:\n{last_errors}")

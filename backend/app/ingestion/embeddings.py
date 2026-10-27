@@ -11,12 +11,20 @@ import logging
 from typing import Protocol
 
 import openai
-from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
+from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_attempt, wait_random_exponential
 
 from app.config import Settings
 
 log = logging.getLogger(__name__)
 MAX_CHARS = 8000  # ~2k tokens; well under the model's 8191-token input limit
+
+
+def _is_transient(exc: BaseException) -> bool:
+    """Retry rate limits and server/network errors, but NOT 'insufficient_quota' (the account is out of credit: retrying
+    cannot help and only delays the error)."""
+    if isinstance(exc, openai.RateLimitError):
+        return getattr(exc, "code", None) != "insufficient_quota"
+    return isinstance(exc, (openai.APIConnectionError, openai.APITimeoutError, openai.InternalServerError))
 
 
 class Embedder(Protocol):
@@ -38,7 +46,7 @@ class OpenAIEmbedder:
 
     # Exponential backoff with jitter on rate limits / transient server errors.
     @retry(
-        retry=retry_if_exception_type((openai.RateLimitError, openai.APIConnectionError, openai.APITimeoutError, openai.InternalServerError)),
+        retry=retry_if_exception(_is_transient),
         wait=wait_random_exponential(multiplier=1, max=60),
         stop=stop_after_attempt(6),
         before_sleep=before_sleep_log(log, logging.WARNING),

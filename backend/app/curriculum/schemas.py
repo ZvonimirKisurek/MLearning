@@ -4,7 +4,7 @@ WHY STRUCTURED OUTPUT?
 An LLM is a next-token predictor; left alone it returns prose. We need data a program can store and a
 UI can render, so we demand JSON that matches a schema. Two independent layers enforce it:
 
-  1. Constrained decoding (server side). The JSON Schema is sent in `output_config.format`. The API compiles it
+  1. Constrained decoding (server side). The JSON Schema is sent as `response_format` (strict json_schema). The API compiles it
      into a grammar and, at every decoding step, masks tokens that would break it. The model *cannot* emit
      malformed JSON or a missing field. This guarantees SHAPE only.
   2. Pydantic validation (client side, below). The API cannot enforce what a JSON Schema cannot express:
@@ -14,7 +14,7 @@ UI can render, so we demand JSON that matches a schema. Two independent layers e
 Why Pydantic rather than hand-written checks? One class gives us (a) the JSON Schema we send to the API,
 (b) parsing + type coercion, (c) precise, machine-readable error locations we can feed back to the model
 so it can fix exactly what was wrong. Constraints the API grammar does not support (min/max, length) are
-stripped from the wire schema by `anthropic.transform_schema` and enforced here instead.
+stripped from the wire schema by `llm.strict_schema` (they become hints in each field's description) and enforced here.
 """
 from __future__ import annotations
 

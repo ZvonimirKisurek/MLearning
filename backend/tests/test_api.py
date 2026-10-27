@@ -210,8 +210,8 @@ async def test_generate_endpoint_queues_only_when_needed(client, db):
 
 # --------------------------------------------------------------------------------------------- summaries
 class FakeSummaryLLM:
-    def generate(self, *, system, user, output_model, grounding, model=None, effort=None):
-        assert output_model is SummaryBatch and model == "claude-haiku-5-5" and "untrusted" in system
+    def generate(self, *, system, user, output_model, grounding, model=None, temperature=None):
+        assert output_model is SummaryBatch and model == "gpt-4o-mini" and temperature == 0.2 and "untrusted" in system
         return output_model.model_validate({"summaries": [{"id": i, "summary": f"Summary for {i}."} for i in sorted(grounding.article_ids)]}, context=grounding)
 
 

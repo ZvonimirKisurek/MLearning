@@ -2,9 +2,7 @@ import asyncio
 import json
 from datetime import date, datetime, timedelta, timezone
 
-import anthropic
 import httpx
-import httpx2
 import psycopg
 import pytest
 from fastapi import HTTPException
@@ -14,18 +12,18 @@ from app.api.deps import require_token
 from app.config import Settings, get_settings
 from app.curriculum import usage
 from app.curriculum.errors import LLMBudgetExceeded
-from app.curriculum.llm import StructuredLLM
 from app.curriculum.schemas import DailyBriefingOutput, GroundingContext
 from app.curriculum.summaries import summarize_pending
 from app.main import create_app
 from tests.factories import daily_dict
+from tests.llm_helpers import completion, make_llm
 from tests.test_integration_db import seed_articles
 
 
 # ------------------------------------------------------------------ cost maths (unit)
 def test_estimate_cost_uses_price_table_and_is_conservative_for_unknown_models():
-    assert usage.estimate_cost("claude-sonnet-5-5", 11_000, 5_000) == pytest.approx(0.022 + 0.05)
-    assert usage.estimate_cost("claude-haiku-5-5", 1_000_000, 0) == pytest.approx(0.10)
+    assert usage.estimate_cost("gpt-4o", 11_000, 5_000) == pytest.approx(0.0275 + 0.05)
+    assert usage.estimate_cost("gpt-4o-mini", 1_000_000, 0) == pytest.approx(0.15)
     assert usage.estimate_cost("some-future-model", 1_000_000, 1_000_000) == pytest.approx(60.0)  # assumes the priciest tier
 
 
@@ -67,15 +65,7 @@ def test_retro_flags_click_through_and_reading_only_weeks():
 
 # ------------------------------------------------------------------ cap + ledger (real DB)
 def llm_with_transport(settings, in_tok=10_000, out_tok=5_000):
-    sent = []
-
-    def handler(req: httpx2.Request):
-        sent.append(1)
-        return httpx2.Response(200, json={"id": "m", "type": "message", "role": "assistant", "model": "m", "stop_sequence": None,
-                                          "content": [{"type": "text", "text": json.dumps(daily_dict("A1"))}], "stop_reason": "end_turn",
-                                          "usage": {"input_tokens": in_tok, "output_tokens": out_tok}})
-    client = anthropic.Anthropic(api_key="k", max_retries=0, http_client=httpx2.Client(transport=httpx2.MockTransport(handler)))
-    return StructuredLLM(settings, client=client), sent
+    return make_llm([completion(json.dumps(daily_dict("A1")), prompt=in_tok, out=out_tok)] * 10, **settings)
 
 
 CTX = GroundingContext(frozenset({"A1", "A2"}), frozenset({"rag", "vector-db", "pytorch"}))
@@ -83,16 +73,16 @@ CTX = GroundingContext(frozenset({"A1", "A2"}), frozenset({"rag", "vector-db", "
 
 @pytest.mark.integration
 def test_every_call_is_recorded_and_the_cap_refuses_before_spending(db):
-    s = Settings(anthropic_api_key="k", llm_daily_budget_usd=0.10)
+    s = dict(llm_daily_budget_usd=0.10)
     llm, sent = llm_with_transport(s)
-    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # costs 0.02 + 0.05 = $0.07
-    assert usage.spent_last_24h() == pytest.approx(0.07, abs=1e-4)
-    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # allowed (0.07 < 0.10), now $0.14
+    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # gpt-4o: 10k in * $2.5/M + 5k out * $10/M = $0.075
+    assert usage.spent_last_24h() == pytest.approx(0.075, abs=1e-4)
+    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # allowed (0.075 < 0.10), now $0.15
     assert len(sent) == 2
     with pytest.raises(LLMBudgetExceeded, match="cap is \\$0.10"):
         llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)
     assert len(sent) == 2, "the refused call must never reach the API"
-    assert "DailyBriefingOutput" in usage.usage_report() and "$0.14" in usage.usage_report().replace("0.140", "0.14")
+    assert "DailyBriefingOutput" in usage.usage_report() and "$0.150" in usage.usage_report()
 
 
 @pytest.mark.integration
@@ -108,9 +98,8 @@ def test_summarizer_stops_at_the_cap_and_leaves_articles_pending(db):
     seed_articles(12)
     with psycopg.connect(db) as c:
         c.execute("insert into llm_usage (purpose, model, input_tokens, output_tokens, cost_usd) values ('x', 'm', 1, 1, 5)")
-    s = Settings(anthropic_api_key="k", llm_daily_budget_usd=1.0, summary_batch_size=5)
-    llm, sent = llm_with_transport(s)
-    out = summarize_pending(llm=llm, settings=s)
+    llm, sent = llm_with_transport(dict(llm_daily_budget_usd=1.0, summary_batch_size=5))
+    out = summarize_pending(llm=llm, settings=Settings(llm_daily_budget_usd=1.0, summary_batch_size=5))
     assert out["summarized"] == 0 and sent == []
     with psycopg.connect(db) as c:
         assert c.execute("select count(*) from articles where ai_summary is null").fetchone()[0] == 12

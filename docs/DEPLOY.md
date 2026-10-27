@@ -27,14 +27,13 @@ in a couple of months, hence the weekly `prune` (`RETENTION_DAYS`, default 60).
 3. **API container** (example: Fly.io; verify flags against `fly launch --help`):
    ```bash
    cd backend && fly launch --no-deploy --dockerfile Dockerfile --name mle-sprint-api
-   fly secrets set DATABASE_URL=... OPENAI_API_KEY=... ANTHROPIC_API_KEY=... API_TOKEN=... TASK_BACKEND=inline TIMEZONE=Europe/Zagreb ROADMAP_START=2026-11-02
+   fly secrets set DATABASE_URL=... OPENAI_API_KEY=... API_TOKEN=... TASK_BACKEND=inline TIMEZONE=Europe/Zagreb ROADMAP_START=2026-11-02
    fly deploy
    curl https://mle-sprint-api.fly.dev/health
    ```
    The image listens on `$PORT` (default 8000) and exposes `/health` for the platform health check. Set the health path
    to `/health`, and let the service auto-stop when idle if the platform supports it.
-4. **GitHub**: repo *Settings > Secrets and variables > Actions*. Secrets: `DATABASE_URL`, `OPENAI_API_KEY`,
-   `ANTHROPIC_API_KEY`. Variables: `TIMEZONE`, `USER_AGENT`, `ROADMAP_START`, `MATCH_STRONG`, `MATCH_MODERATE`.
+4. **GitHub**: repo *Settings > Secrets and variables > Actions*. Secrets: `DATABASE_URL`, `OPENAI_API_KEY`. Variables: `TIMEZONE`, `USER_AGENT`, `ROADMAP_START`, `MATCH_STRONG`, `MATCH_MODERATE`.
    Merge to the default branch (scheduled workflows only run there), then *Actions > Scheduled jobs > Run workflow*
    with `ingest`, then `summarize --limit 120`, `generate-weekly`, `generate-daily`.
 5. **Vercel**: import the repo, set **Root Directory = `frontend`**. Environment variables: `API_URL=https://<your api host>`,

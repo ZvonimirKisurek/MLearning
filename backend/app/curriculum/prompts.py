@@ -31,12 +31,14 @@ Temperature rescales the model's next-token probabilities before sampling: p_i ~
 Low T sharpens the distribution (near-deterministic, good for extraction and grounded answers); high T
 flattens it (more varied, good for brainstorming). For this app we would want roughly T~0.3 for the
 daily briefing (stick to evidence, reproducible) and T~0.7 for the weekly theme (some creativity).
-BUT current Claude models (including the default here, claude-sonnet-5-5) no longer expose sampling knobs:
-the API rejects non-default `temperature`/`top_p`/`top_k` and the 2.x Python SDK dropped the parameters, so
-the model manages sampling itself. Our determinism comes instead from (1) grammar-constrained decoding, (2) the
-closed-world evidence set, (3) validation + repair, and (4) `effort`, which controls how much the model
-deliberates before answering (not randomness). That is a real shift in how you "tune" an LLM: you constrain
-the problem rather than the dice.
+This app sets it per task (config temp_weekly / temp_daily / temp_summary):
+  weekly theme 0.6  - planning benefits from some variety between runs;
+  daily briefing 0.3 - stay close to the evidence, mostly reproducible;
+  summaries 0.2     - restating text, near-deterministic.
+Temperature is only one of the determinism levers, and not the strongest: grammar-constrained decoding fixes the
+SHAPE, the closed evidence set limits what can be cited, validation + repair catches the rest, and an optional
+`seed` (llm_seed) makes runs best-effort repeatable. Note: reasoning models (o-series, gpt-5) reject a custom
+temperature; if you switch LLM_MODEL to one, remove the `temperature=` arguments in generators.py/summaries.py.
 """
 from __future__ import annotations
 

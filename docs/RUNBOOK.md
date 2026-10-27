@@ -1,6 +1,6 @@
 # Runbook: run it locally with real keys, then calibrate it
 
-Prereqs: Docker, Python 3.11+, Node 22, an OpenAI key (embeddings) and an Anthropic key (generation). Set a monthly
+Prereqs: Docker, Python 3.11+, Node 22, an OpenAI API key (the only provider: embeddings, summaries and generation). Set a monthly
 spend limit on both keys in their consoles before you start.
 
 ## 1. Configure
@@ -8,7 +8,7 @@ spend limit on both keys in their consoles before you start.
 cp .env.example .env
 openssl rand -hex 32            # paste the output as API_TOKEN
 ```
-Edit `.env`: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `API_TOKEN`, `USER_AGENT` (put a real contact email in it, it
+Edit `.env`: `OPENAI_API_KEY`, `API_TOKEN`, `USER_AGENT` (put a real contact email in it, it
 is sent to every site you scrape), `TIMEZONE` (e.g. `Europe/Zagreb`). Optional: `ROADMAP_START` (see Roadmap below).
 ```bash
 cp frontend/.env.example frontend/.env.local   # then set API_TOKEN to the SAME value; API_URL stays http://localhost:8000
@@ -70,8 +70,7 @@ docker compose exec db psql -U postgres mlesprint \
 - `duplicates` rows have `embedding is null` by design (the vector is never queried again).
 - Dashboard `/`: Today's Mission with 3 tasks, the weekly theme card, the skill radar. `/feed`: articles with AI summaries
   and skill badges. If `/` says "not ready", click Generate now (needs the worker) or run `generate-daily`.
-- Rough LLM cost (estimate, check your console): one weekly or daily generation is ~10-15k input and ~3-6k output
-  tokens, i.e. a few cents on Sonnet-class pricing; summaries on Haiku are far cheaper. Order of a few dollars a month.
+- Rough LLM cost (estimate, check `python -m app.cli usage`): one weekly or daily generation is ~11k input and ~1.5-2k output tokens, a few cents on gpt-4o; summaries on gpt-4o-mini are cheaper still. About $0.6 a week.
 
 ## 5b. Starting mid-week (roadmap week 1, today's briefing)
 The weekly job normally runs Sunday night. To start now, in `backend/` with the venv active:

@@ -127,7 +127,7 @@ def main():
                 conn.execute("update articles set ai_summary=%s, ai_summary_at=now() where id=%s", (ai, new_id))
 
     class DemoLLM:
-        """Stands in for Claude: writes plausible, schema-valid content from the prompt it is given."""
+        """Stands in for the LLM: writes plausible, schema-valid content from the prompt it is given."""
         def generate(self, *, system, user, output_model, grounding, **_):
             arts = re.findall(r'<article id="(A\d+)"[^>]*related_skill="([^"]+)">\n<title>(.*?)</title>', user)
             if output_model.__name__ == "WeeklyThemeOutput":

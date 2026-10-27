@@ -40,12 +40,12 @@ The roadmap is enforced in **three** places, not just the prompt: this file (ins
 
 ## 3. `backend/app/curriculum/schemas.py` + `llm.py`: Pydantic as a safety net
 Layers, in the order an answer passes through them:
-1. **Constrained decoding.** `llm.py` L53 `anthropic.transform_schema(output_model)` turns the Pydantic class into the JSON Schema sent in `output_config.format`; the server masks tokens that would break it. Guarantees *shape* (valid JSON, every field, right types). Print `anthropic.transform_schema(DailyBriefingOutput)` to see how min/max/length constraints become text hints in `description`.
-2. **Value validation.** `llm.py` L72 `model_validate_json(text, context=grounding)` runs the validators in `schemas.py`: L28-37 `GroundingContext` (the closed world: ids shown, skills known, required focus), L44-63 the three validators (`_article_id`, `_skill_slug`, `_no_urls`), L66-68 the `Annotated` types that attach them to fields, L71-73 `extra="forbid"`, L96-99 roadmap focus, L136-146 `_time_budget` (reading + hands-on <= 120 min), L155-163 `SummaryBatch` coverage. These check what a schema cannot: *meaning relative to our data*.
-3. **Repair loop.** `llm.py` L76-80: on `ValidationError` it appends the model's own answer plus a precise error list (`format_errors`, L37: locations and messages only, never echoed values) and asks again; L81 raises `LLMValidationFailed` after `LLM_MAX_REPAIRS` tries. Nothing is stored unless validation passed.
-4. **Typed failure paths.** L66-70: refusal and `max_tokens` truncation are separate exceptions, never silently parsed.
+1. **Constrained decoding.** `llm.py` L77 `strict_schema(output_model)` turns the Pydantic class into the strict JSON Schema sent as `response_format` (L102): `openai.pydantic_function_tool` makes every property required and every object closed, then `_relax` (L60) moves min/max/length limits into each field's `description`. The server masks tokens that would break the schema. Guarantees *shape* (valid JSON, every field, right types). Print `strict_schema(DailyBriefingOutput)` to see the hints.
+2. **Value validation.** `llm.py` L129 `model_validate_json(text, context=grounding)` runs the validators in `schemas.py`: L28-37 `GroundingContext` (the closed world: ids shown, skills known, required focus), L44-63 the three validators (`_article_id`, `_skill_slug`, `_no_urls`), L66-68 the `Annotated` types that attach them to fields, L71-73 `extra="forbid"`, L96-99 roadmap focus, L136-146 `_time_budget` (reading + hands-on <= 120 min), L155-163 `SummaryBatch` coverage. These check what a schema cannot: *meaning relative to our data*.
+3. **Repair loop.** `llm.py` L133-136: on `ValidationError` it appends the model's own answer plus a precise error list (`format_errors`, L87: locations and messages only, never echoed values) and asks again; L137 raises `LLMValidationFailed` after `LLM_MAX_REPAIRS` tries. Nothing is stored unless validation passed.
+4. **Typed failure paths.** L115-127: `insufficient_quota` (out of credit) becomes `LLMBudgetExceeded` and is not retried, a refusal or content filter is `LLMRefusal`, `finish_reason == "length"` is `LLMTruncated`; none is silently parsed.
 5. **Code, not the model, produces links.** `generators.py` `_article_ref` (L69) resolves `A7` to a URL from the database.
-6. **Spend guard.** L61 `self._usage.check()` runs before every attempt, repairs included.
+6. **Spend guard.** L106 `self._usage.check()` runs before every attempt, repairs included.
 
 *Experiment:* open `tests/test_curriculum_unit.py`, `test_daily_rejections`: each case is a lie a model could tell and the validator that catches it. Add your own.
 
@@ -57,7 +57,7 @@ plus a network round trip. Measured on this code: one article alone is ~450 inpu
 overhead is shared), so ~2.3x fewer input tokens and 10x fewer requests (latency, rate limits). Output tokens are the same.
 **Why not bigger:** a validation failure repeats the whole batch, output grows (more `max_tokens` risk), and quality per item can
 dilute. L60-61: when the daily cap is hit it stops and leaves articles pending. *Experiment:* run `summarize --limit 20` with `SUMMARY_BATCH_SIZE=1`,
-then `10`, then compare `python -m app.cli usage`. (Anthropic's Message Batches API is a further 50% off for non-urgent work: a good
+then `10`, then compare `python -m app.cli usage`. (OpenAI's Batch API is a further ~50% off for non-urgent work: a good
 exercise to add.)
 
 ## 5. Bonus: `ingestion/repository.py` `find_nearest` (L67-82) + `pipeline.py` L113

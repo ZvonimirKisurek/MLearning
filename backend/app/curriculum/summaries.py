@@ -8,7 +8,7 @@ small, cheap model rewrites title+excerpt into 1-2 neutral sentences so the feed
     XML-escaped, validators forbid URLs, and the frontend renders it as plain text (React escapes by default),
     so an injected instruction can at worst produce a bad summary - never code execution or a rogue link.
 
-Batching 10 articles per call amortises the system prompt; Haiku-class pricing makes ~60 articles/run negligible.
+Batching 10 articles per call amortises the system prompt; mini-class pricing (gpt-4o-mini) makes ~60 articles/run negligible.
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def summarize_pending(*, llm: StructuredLLM | None = None, settings: Settings | 
         try:
             out = llm.generate(system=SUMMARY_SYSTEM, user=f"<articles>\n{body}\n</articles>\n\nSummarise each article.",
                                output_model=SummaryBatch, grounding=GroundingContext(frozenset(ids), frozenset()),
-                               model=settings.summary_model, effort=settings.summary_effort)
+                               model=settings.summary_model, temperature=settings.temp_summary)
         except LLMBudgetExceeded:
             log.warning("daily LLM budget reached; stopping summaries (articles stay pending)")
             break

@@ -36,8 +36,8 @@ class FakeEmbedder:
 
 
 class FakeLLM:
-    """Builds a valid output from the grounding ids it is given - stands in for Claude."""
-    def generate(self, *, system, user, output_model, grounding):
+    """Builds a valid output from the grounding ids it is given - stands in for the LLM."""
+    def generate(self, *, system, user, output_model, grounding, **kw):
         ids = sorted(grounding.article_ids, key=lambda x: int(x[1:]))
         if output_model.__name__ == "WeeklyThemeOutput":
             d = weekly_dict(ids, skills=("rag", "vector-db"))
