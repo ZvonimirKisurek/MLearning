@@ -1,0 +1,150 @@
+# MLE-Sprint source catalogue. Source of truth for what gets ingested.
+# Fields: slug, name, category, kind (default rss), url, weight (0-1.5 quality prior), enabled, config.
+# Validate liveness with:  python -m app.cli ingest --dry-run
+# NOTE: X/Twitter has no free API; "key researchers" are covered via their blogs/Substacks (RSS replacements).
+# NOTE: reddit sources need REDDIT_CLIENT_ID/SECRET (official API); reddit.com/robots.txt disallows generic crawlers.
+sources:
+  # ------------------------------------------------------------------ research
+  - {slug: arxiv-cs-lg, name: "arXiv cs.LG", category: research, url: "https://rss.arxiv.org/rss/cs.LG", weight: 0.7, config: {max_items: 60}}
+  - {slug: arxiv-cs-ai, name: "arXiv cs.AI", category: research, url: "https://rss.arxiv.org/rss/cs.AI", weight: 0.7, config: {max_items: 60}}
+  - {slug: arxiv-cs-cl, name: "arXiv cs.CL", category: research, url: "https://rss.arxiv.org/rss/cs.CL", weight: 0.8, config: {max_items: 60}}
+  - {slug: arxiv-cs-cv, name: "arXiv cs.CV", category: research, url: "https://rss.arxiv.org/rss/cs.CV", weight: 0.5, config: {max_items: 40}}
+  - {slug: arxiv-stat-ml, name: "arXiv stat.ML", category: research, url: "https://rss.arxiv.org/rss/stat.ML", weight: 0.6, config: {max_items: 40}}
+  - {slug: arxiv-cs-ir, name: "arXiv cs.IR (retrieval)", category: research, url: "https://rss.arxiv.org/rss/cs.IR", weight: 0.9, config: {max_items: 40}}
+  - {slug: arxiv-cs-ma, name: "arXiv cs.MA (agents)", category: research, url: "https://rss.arxiv.org/rss/cs.MA", weight: 0.7, config: {max_items: 30}}
+  - {slug: hf-daily-papers, name: "Hugging Face Daily Papers", category: research, kind: hf_daily_papers, url: "https://huggingface.co/api/daily_papers", weight: 1.3}
+  - {slug: bair-blog, name: "Berkeley AI Research Blog", category: research, url: "https://bair.berkeley.edu/blog/feed.xml", weight: 1.1}
+  - {slug: cmu-ml-blog, name: "CMU ML Blog", category: research, url: "https://blog.ml.cmu.edu/feed/", weight: 1.0}
+  - {slug: stanford-ai-blog, name: "Stanford AI Lab Blog", category: research, url: "https://ai.stanford.edu/blog/feed.xml", weight: 1.0}
+  - {slug: mit-news-ai, name: "MIT News - AI", category: research, url: "https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml", weight: 0.8}
+  - {slug: google-research, name: "Google Research Blog", category: research, url: "https://research.google/blog/rss/", weight: 1.2}
+  - {slug: deepmind-blog, name: "Google DeepMind Blog", category: research, url: "https://deepmind.google/blog/rss.xml", weight: 1.2}
+  - {slug: allenai-blog, name: "Allen AI Blog", category: research, url: "https://allenai.org/rss.xml", weight: 1.0}
+  - {slug: the-gradient, name: "The Gradient", category: research, url: "https://thegradient.pub/rss/", weight: 1.1}
+  - {slug: nature-mi, name: "Nature Machine Intelligence", category: research, url: "https://www.nature.com/natmachintell.rss", weight: 0.7}
+  - {slug: ml-mastery, name: "Machine Learning Mastery", category: research, url: "https://machinelearningmastery.com/blog/feed/", weight: 0.8}
+
+  # ------------------------------------------------------------------ industry news
+  - {slug: techcrunch-ai, name: "TechCrunch AI", category: industry_news, url: "https://techcrunch.com/category/artificial-intelligence/feed/", weight: 0.8}
+  - {slug: venturebeat-ai, name: "VentureBeat AI", category: industry_news, url: "https://venturebeat.com/category/ai/feed/", weight: 0.8}
+  - {slug: verge-ai, name: "The Verge AI", category: industry_news, url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", weight: 0.8}
+  - {slug: ars-ai, name: "Ars Technica AI", category: industry_news, url: "https://arstechnica.com/ai/feed/", weight: 0.9}
+  - {slug: wired-ai, name: "WIRED AI", category: industry_news, url: "https://www.wired.com/feed/tag/ai/latest/rss", weight: 0.7}
+  - {slug: mit-tr-ai, name: "MIT Technology Review AI", category: industry_news, url: "https://www.technologyreview.com/topic/artificial-intelligence/feed", weight: 0.9}
+  - {slug: zdnet-ai, name: "ZDNET AI", category: industry_news, url: "https://www.zdnet.com/topic/artificial-intelligence/rss.xml", weight: 0.6}
+  - {slug: ai-news, name: "AI News", category: industry_news, url: "https://www.artificialintelligence-news.com/feed/", weight: 0.6}
+  - {slug: marktechpost, name: "MarkTechPost", category: industry_news, url: "https://www.marktechpost.com/feed/", weight: 0.8}
+  - {slug: unite-ai, name: "Unite.AI", category: industry_news, url: "https://www.unite.ai/feed/", weight: 0.5}
+  - {slug: siliconangle-ai, name: "SiliconANGLE AI", category: industry_news, url: "https://siliconangle.com/category/ai/feed/", weight: 0.6}
+  - {slug: register-ai, name: "The Register AI/ML", category: industry_news, url: "https://www.theregister.com/software/ai_ml/headlines.atom", weight: 0.7}
+  - {slug: ieee-spectrum-ai, name: "IEEE Spectrum AI", category: industry_news, url: "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss", weight: 0.8}
+  - {slug: tds, name: "Towards Data Science", category: industry_news, url: "https://towardsdatascience.com/feed", weight: 0.7}
+  - {slug: kdnuggets, name: "KDnuggets", category: industry_news, url: "https://www.kdnuggets.com/feed", weight: 0.7}
+  - {slug: analytics-india, name: "Analytics India Magazine", category: industry_news, url: "https://analyticsindiamag.com/feed/", weight: 0.4}
+  - {slug: synced, name: "Synced Review", category: industry_news, url: "https://syncedreview.com/feed/", weight: 0.7}
+  - {slug: mlops-community, name: "MLOps Community", category: industry_news, url: "https://mlops.community/feed/", weight: 1.1}
+
+  # ------------------------------------------------------------------ engineering blogs
+  - {slug: netflix-tech, name: "Netflix TechBlog", category: engineering_blog, url: "https://netflixtechblog.com/feed", weight: 1.2}
+  - {slug: uber-eng, name: "Uber Engineering", category: engineering_blog, url: "https://www.uber.com/blog/engineering/rss/", weight: 1.2}
+  - {slug: spotify-eng, name: "Spotify Engineering", category: engineering_blog, url: "https://engineering.atspotify.com/feed/", weight: 1.2}
+  - {slug: meta-eng, name: "Meta Engineering", category: engineering_blog, url: "https://engineering.fb.com/feed/", weight: 1.2}
+  - {slug: meta-ai, name: "Meta AI Blog", category: engineering_blog, url: "https://ai.meta.com/blog/rss/", weight: 1.2}
+  - {slug: google-dev, name: "Google Developers Blog", category: engineering_blog, url: "https://developers.googleblog.com/feeds/posts/default", weight: 0.8}
+  - {slug: gcp-ai-ml, name: "Google Cloud AI & ML", category: engineering_blog, url: "https://cloud.google.com/blog/products/ai-machine-learning/rss", weight: 0.9}
+  - {slug: aws-ml, name: "AWS Machine Learning Blog", category: engineering_blog, url: "https://aws.amazon.com/blogs/machine-learning/feed/", weight: 1.0}
+  - {slug: msr, name: "Microsoft Research", category: engineering_blog, url: "https://www.microsoft.com/en-us/research/feed/", weight: 1.1}
+  - {slug: nvidia-dev, name: "NVIDIA Technical Blog", category: engineering_blog, url: "https://developer.nvidia.com/blog/feed/", weight: 1.1}
+  - {slug: openai-news, name: "OpenAI News", category: engineering_blog, url: "https://openai.com/news/rss.xml", weight: 1.3}
+  # Anthropic has no official RSS; this is a community-generated feed (may lag/break).
+  - {slug: anthropic-news, name: "Anthropic News (community feed)", category: engineering_blog, url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml", weight: 1.3}
+  - {slug: hf-blog, name: "Hugging Face Blog", category: engineering_blog, url: "https://huggingface.co/blog/feed.xml", weight: 1.3}
+  - {slug: pytorch-blog, name: "PyTorch Blog", category: engineering_blog, url: "https://pytorch.org/feed.xml", weight: 1.4}
+  - {slug: tensorflow-blog, name: "TensorFlow Blog", category: engineering_blog, url: "https://blog.tensorflow.org/feeds/posts/default", weight: 0.7}
+  - {slug: langchain-blog, name: "LangChain Blog", category: engineering_blog, url: "https://blog.langchain.dev/rss/", weight: 1.2}
+  - {slug: llamaindex-blog, name: "LlamaIndex Blog", category: engineering_blog, url: "https://www.llamaindex.ai/blog/feed", weight: 1.2}
+  - {slug: wandb-blog, name: "Weights & Biases", category: engineering_blog, url: "https://wandb.ai/fully-connected/rss.xml", weight: 1.1}
+  - {slug: databricks-blog, name: "Databricks Blog", category: engineering_blog, url: "https://www.databricks.com/feed", weight: 0.9}
+  - {slug: weaviate-blog, name: "Weaviate Blog", category: engineering_blog, url: "https://weaviate.io/rss.xml", weight: 1.2}
+  - {slug: qdrant-blog, name: "Qdrant Articles", category: engineering_blog, url: "https://qdrant.tech/articles/index.xml", weight: 1.2}
+  - {slug: milvus-blog, name: "Milvus Blog", category: engineering_blog, url: "https://milvus.io/blog/rss.xml", weight: 1.0}
+  - {slug: supabase-blog, name: "Supabase Blog", category: engineering_blog, url: "https://supabase.com/rss.xml", weight: 1.0}
+  - {slug: pgvector-releases, name: "pgvector Releases", category: engineering_blog, url: "https://github.com/pgvector/pgvector/releases.atom", weight: 1.2}
+  - {slug: airbnb-eng, name: "Airbnb Engineering", category: engineering_blog, url: "https://medium.com/feed/airbnb-engineering", weight: 1.0}
+  - {slug: pinterest-eng, name: "Pinterest Engineering", category: engineering_blog, url: "https://medium.com/feed/pinterest-engineering", weight: 1.1}
+  - {slug: linkedin-eng, name: "LinkedIn Engineering", category: engineering_blog, url: "https://engineering.linkedin.com/blog.rss.html", weight: 1.0}
+  - {slug: doordash-eng, name: "DoorDash Engineering", category: engineering_blog, url: "https://doordash.engineering/feed/", weight: 1.0}
+  - {slug: instacart-eng, name: "Instacart Tech", category: engineering_blog, url: "https://tech.instacart.com/feed", weight: 0.9}
+  - {slug: lyft-eng, name: "Lyft Engineering", category: engineering_blog, url: "https://eng.lyft.com/feed", weight: 0.9}
+  - {slug: dropbox-tech, name: "Dropbox Tech", category: engineering_blog, url: "https://dropbox.tech/feed", weight: 0.8}
+  - {slug: shopify-eng, name: "Shopify Engineering", category: engineering_blog, url: "https://shopify.engineering/blog.atom", weight: 0.8}
+  - {slug: cloudflare-ai, name: "Cloudflare AI", category: engineering_blog, url: "https://blog.cloudflare.com/tag/ai/rss/", weight: 0.8}
+  - {slug: github-ai-blog, name: "GitHub Blog - AI & ML", category: engineering_blog, url: "https://github.blog/ai-and-ml/feed/", weight: 0.9}
+  - {slug: replicate-blog, name: "Replicate Blog", category: engineering_blog, url: "https://replicate.com/blog/rss", weight: 0.9}
+  - {slug: anyscale-blog, name: "Anyscale / Ray Blog", category: engineering_blog, url: "https://www.anyscale.com/blog/rss.xml", weight: 1.0}
+  - {slug: mlflow-blog, name: "MLflow Blog", category: engineering_blog, url: "https://mlflow.org/blog/rss.xml", weight: 1.1}
+  - {slug: neptune-blog, name: "neptune.ai Blog", category: engineering_blog, url: "https://neptune.ai/blog/feed", weight: 0.8}
+  - {slug: zenml-blog, name: "ZenML Blog", category: engineering_blog, url: "https://www.zenml.io/rss.xml", weight: 0.9}
+  - {slug: apple-mlr, name: "Apple Machine Learning Research", category: engineering_blog, url: "https://machinelearning.apple.com/rss.xml", weight: 1.1}
+  - {slug: cohere-blog, name: "Cohere Blog", category: engineering_blog, url: "https://cohere.com/blog/rss.xml", weight: 0.9}
+
+  # ------------------------------------------------------------------ community
+  - {slug: hn-llm, name: "Hacker News - LLM", category: community, kind: hackernews, url: "https://news.ycombinator.com", weight: 1.0, config: {query: "LLM", min_points: 40}}
+  - {slug: hn-ml, name: "Hacker News - machine learning", category: community, kind: hackernews, url: "https://news.ycombinator.com", weight: 1.0, config: {query: "machine learning", min_points: 40}}
+  - {slug: hn-rag-vector, name: "Hacker News - RAG / vector DB", category: community, kind: hackernews, url: "https://news.ycombinator.com", weight: 1.2, config: {query: "vector database", min_points: 15}}
+  - {slug: hn-pytorch, name: "Hacker News - PyTorch", category: community, kind: hackernews, url: "https://news.ycombinator.com", weight: 1.2, config: {query: "PyTorch", min_points: 15}}
+  - {slug: hn-show-ai, name: "Show HN - AI", category: community, kind: hackernews, url: "https://news.ycombinator.com", weight: 0.9, config: {query: "AI", tags: show_hn, min_points: 25}}
+  - {slug: reddit-ml, name: "r/MachineLearning", category: community, kind: reddit, url: "https://www.reddit.com/r/MachineLearning", weight: 1.1, config: {subreddit: MachineLearning}}
+  - {slug: reddit-localllama, name: "r/LocalLLaMA", category: community, kind: reddit, url: "https://www.reddit.com/r/LocalLLaMA", weight: 1.0, config: {subreddit: LocalLLaMA}}
+  - {slug: reddit-learnml, name: "r/learnmachinelearning", category: community, kind: reddit, url: "https://www.reddit.com/r/learnmachinelearning", weight: 0.7, config: {subreddit: learnmachinelearning}}
+  - {slug: reddit-deeplearning, name: "r/deeplearning", category: community, kind: reddit, url: "https://www.reddit.com/r/deeplearning", weight: 0.7, config: {subreddit: deeplearning}}
+  - {slug: reddit-mlops, name: "r/mlops", category: community, kind: reddit, url: "https://www.reddit.com/r/mlops", weight: 1.1, config: {subreddit: mlops}}
+  - {slug: reddit-llmdevs, name: "r/LLMDevs", category: community, kind: reddit, url: "https://www.reddit.com/r/LLMDevs", weight: 0.8, config: {subreddit: LLMDevs}}
+  - {slug: reddit-langchain, name: "r/LangChain", category: community, kind: reddit, url: "https://www.reddit.com/r/LangChain", weight: 0.8, config: {subreddit: LangChain}}
+  - {slug: reddit-artificial, name: "r/artificial", category: community, kind: reddit, url: "https://www.reddit.com/r/artificial", weight: 0.5, config: {subreddit: artificial}}
+  - {slug: gh-trending-python, name: "GitHub Trending - Python", category: community, kind: github_trending, url: "https://github.com/trending/python?since=daily", weight: 1.0}
+  - {slug: gh-trending-notebook, name: "GitHub Trending - Jupyter", category: community, kind: github_trending, url: "https://github.com/trending/jupyter-notebook?since=daily", weight: 0.9}
+  - {slug: gh-trending-all, name: "GitHub Trending - All", category: community, kind: github_trending, url: "https://github.com/trending?since=daily", weight: 0.6}
+  - {slug: gh-trending-rust, name: "GitHub Trending - Rust", category: community, kind: github_trending, url: "https://github.com/trending/rust?since=weekly", weight: 0.4}
+  - {slug: lobsters-ai, name: "Lobsters - AI", category: community, url: "https://lobste.rs/t/ai.rss", weight: 0.8}
+  - {slug: lobsters-ml, name: "Lobsters - ML", category: community, url: "https://lobste.rs/t/ml.rss", weight: 0.9}
+  - {slug: devto-ml, name: "DEV - machinelearning", category: community, url: "https://dev.to/feed/tag/machinelearning", weight: 0.5}
+  - {slug: devto-llm, name: "DEV - llm", category: community, url: "https://dev.to/feed/tag/llm", weight: 0.5}
+  - {slug: devto-rag, name: "DEV - rag", category: community, url: "https://dev.to/feed/tag/rag", weight: 0.5}
+
+  # ------------------------------------------------------------------ newsletters
+  - {slug: bens-bites, name: "Ben's Bites", category: newsletter, url: "https://www.bensbites.com/feed", weight: 1.0}
+  - {slug: the-batch, name: "The Batch (deeplearning.ai)", category: newsletter, url: "https://www.deeplearning.ai/the-batch/feed/", weight: 1.3}
+  - {slug: import-ai, name: "Import AI", category: newsletter, url: "https://importai.substack.com/feed", weight: 1.3}
+  - {slug: tldr-ai, name: "TLDR AI", category: newsletter, url: "https://tldr.tech/api/rss/ai", weight: 1.0}
+  - {slug: last-week-in-ai, name: "Last Week in AI", category: newsletter, url: "https://lastweekin.ai/feed", weight: 1.0}
+  - {slug: the-sequence, name: "The Sequence", category: newsletter, url: "https://thesequence.substack.com/feed", weight: 0.9}
+  - {slug: latent-space, name: "Latent Space", category: newsletter, url: "https://www.latent.space/feed", weight: 1.3}
+  - {slug: ai-snake-oil, name: "AI Snake Oil", category: newsletter, url: "https://www.aisnakeoil.com/feed", weight: 0.8}
+  - {slug: interconnects, name: "Interconnects (Nathan Lambert)", category: newsletter, url: "https://www.interconnects.ai/feed", weight: 1.3}
+  - {slug: ahead-of-ai, name: "Ahead of AI (Sebastian Raschka)", category: newsletter, url: "https://magazine.sebastianraschka.com/feed", weight: 1.4}
+  - {slug: marcus-on-ai, name: "Marcus on AI", category: newsletter, url: "https://garymarcus.substack.com/feed", weight: 0.5}
+  - {slug: algorithmic-bridge, name: "The Algorithmic Bridge", category: newsletter, url: "https://thealgorithmicbridge.substack.com/feed", weight: 0.6}
+  - {slug: deep-learning-weekly, name: "Deep Learning Weekly", category: newsletter, url: "https://www.deeplearningweekly.com/feed", weight: 0.9}
+  - {slug: ruder-nlp, name: "NLP News (Sebastian Ruder)", category: newsletter, url: "https://newsletter.ruder.io/feed", weight: 0.9}
+  - {slug: one-useful-thing, name: "One Useful Thing (Ethan Mollick)", category: newsletter, url: "https://www.oneusefulthing.org/feed", weight: 0.7}
+  - {slug: pragmatic-engineer, name: "The Pragmatic Engineer", category: newsletter, url: "https://newsletter.pragmaticengineer.com/feed", weight: 0.6}
+  - {slug: deep-learning-focus, name: "Deep (Learning) Focus (Cameron Wolfe)", category: newsletter, url: "https://cameronrwolfe.substack.com/feed", weight: 1.3}
+
+  # ------------------------------------------------------------------ key researchers (RSS replacement for X/Twitter)
+  - {slug: karpathy, name: "Andrej Karpathy", category: researcher, url: "https://karpathy.github.io/feed.xml", weight: 1.5}
+  - {slug: lilian-weng, name: "Lilian Weng (Lil'Log)", category: researcher, url: "https://lilianweng.github.io/index.xml", weight: 1.5}
+  - {slug: chip-huyen, name: "Chip Huyen", category: researcher, url: "https://huyenchip.com/feed.xml", weight: 1.4}
+  - {slug: simon-willison, name: "Simon Willison", category: researcher, url: "https://simonwillison.net/atom/everything/", weight: 1.4}
+  - {slug: eugene-yan, name: "Eugene Yan", category: researcher, url: "https://eugeneyan.com/rss/", weight: 1.4}
+  - {slug: jay-alammar, name: "Jay Alammar", category: researcher, url: "https://jalammar.github.io/feed.xml", weight: 1.3}
+  - {slug: colah, name: "Christopher Olah", category: researcher, url: "https://colah.github.io/rss.xml", weight: 1.1}
+  - {slug: hamel-husain, name: "Hamel Husain", category: researcher, url: "https://hamel.dev/index.xml", weight: 1.4}
+  - {slug: fastai, name: "fast.ai (Jeremy Howard)", category: researcher, url: "https://www.fast.ai/index.xml", weight: 1.2}
+  - {slug: vicki-boykis, name: "Vicki Boykis", category: researcher, url: "https://vickiboykis.com/index.xml", weight: 1.0}
+  - {slug: tim-dettmers, name: "Tim Dettmers", category: researcher, url: "https://timdettmers.com/feed/", weight: 1.2}
+  - {slug: sander-dieleman, name: "Sander Dieleman", category: researcher, url: "https://sander.ai/feed.xml", weight: 1.0}
+  - {slug: maxime-labonne, name: "Maxime Labonne", category: researcher, url: "https://mlabonne.github.io/blog/feed.xml", weight: 1.3}
+  - {slug: phil-schmid, name: "Philipp Schmid", category: researcher, url: "https://www.philschmid.de/rss", weight: 1.3}
+  - {slug: jxnl, name: "Jason Liu", category: researcher, url: "https://jxnl.co/writing/rss.xml", weight: 1.1}
+  - {slug: raschka-blog, name: "Sebastian Raschka (blog)", category: researcher, url: "https://sebastianraschka.com/rss_feed.xml", weight: 1.2}
