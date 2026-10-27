@@ -24,16 +24,14 @@ import anthropic
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings
+from app.curriculum.errors import LLMBudgetExceeded, LLMError, LLMRefusal, LLMTruncated, LLMValidationFailed  # noqa: F401 (re-exported)
 from app.curriculum.schemas import GroundingContext
+from app.curriculum.usage import DbUsage
 
 log = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
-class LLMError(Exception): ...
-class LLMRefusal(LLMError): ...
-class LLMTruncated(LLMError): ...
-class LLMValidationFailed(LLMError): ...
 
 
 def format_errors(exc: ValidationError) -> str:
@@ -42,8 +40,9 @@ def format_errors(exc: ValidationError) -> str:
 
 
 class StructuredLLM:
-    def __init__(self, settings: Settings, client: anthropic.Anthropic | None = None) -> None:
+    def __init__(self, settings: Settings, client: anthropic.Anthropic | None = None, usage=None) -> None:
         self._s = settings
+        self._usage = usage or DbUsage(settings)
         self._client = client or anthropic.Anthropic(api_key=settings.anthropic_api_key or None, max_retries=settings.llm_sdk_retries)
 
     def generate(self, *, system: str, user: str, output_model: type[T], grounding: GroundingContext,
@@ -59,7 +58,9 @@ class StructuredLLM:
                 model=model or s.llm_model, max_tokens=s.llm_max_tokens, system=system, messages=messages,
                 output_config={"effort": effort or s.llm_effort, "format": {"type": "json_schema", "schema": schema}},
             )
+            self._usage.check()  # hard daily cap: refuse BEFORE spending, on every attempt including repairs
             resp = self._client.messages.create(**kwargs)
+            self._usage.record(output_model.__name__, kwargs["model"], resp.usage.input_tokens, resp.usage.output_tokens)
             log.info("llm attempt=%d in=%s out=%s stop=%s", attempt, resp.usage.input_tokens, resp.usage.output_tokens, resp.stop_reason)
 
             if resp.stop_reason == "refusal":

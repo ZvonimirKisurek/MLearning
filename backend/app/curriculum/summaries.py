@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from app.config import Settings, get_settings
+from app.curriculum.errors import LLMBudgetExceeded
 from app.curriculum.llm import LLMError, StructuredLLM
 from app.curriculum.prompts import _esc
 from app.curriculum.schemas import GroundingContext, SummaryBatch
@@ -56,6 +57,9 @@ def summarize_pending(*, llm: StructuredLLM | None = None, settings: Settings | 
             out = llm.generate(system=SUMMARY_SYSTEM, user=f"<articles>\n{body}\n</articles>\n\nSummarise each article.",
                                output_model=SummaryBatch, grounding=GroundingContext(frozenset(ids), frozenset()),
                                model=settings.summary_model, effort=settings.summary_effort)
+        except LLMBudgetExceeded:
+            log.warning("daily LLM budget reached; stopping summaries (articles stay pending)")
+            break
         except LLMError:
             log.exception("summary batch failed; articles stay pending for the next run")
             failed += len(batch)

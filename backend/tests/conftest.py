@@ -33,7 +33,7 @@ def db(pg_uri):
         appdb._pool.close()
         appdb._pool = None
     with psycopg.connect(pg_uri, autocommit=True) as conn:
-        conn.execute("truncate articles, sources, ingestion_runs, weekly_themes, daily_briefings, skill_history cascade")
+        conn.execute("truncate articles, sources, ingestion_runs, weekly_themes, daily_briefings, skill_history, llm_usage cascade")
         conn.execute("update skills set level = 20, embedding = null")
     yield pg_uri
     if appdb._pool is not None:

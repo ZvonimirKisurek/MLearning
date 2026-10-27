@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     llm_effort: str = "medium"  # low|medium|high|xhigh|max: how hard the model thinks before answering
     llm_max_tokens: int = 16000  # thinking tokens count against this too
     llm_max_repairs: int = 2  # re-prompts after a validation failure before giving up
+    llm_daily_budget_usd: float = 1.0  # hard cap on estimated LLM spend per rolling 24h (typical use is ~$0.15/day)
     llm_sdk_retries: int = 5  # SDK-level exponential backoff on 429/5xx/connection errors
     prompt_article_count: int = 50  # articles injected into the prompt
     candidate_window_days: int = 7
@@ -53,7 +54,8 @@ class Settings(BaseSettings):
     summary_max_per_run: int = 60
 
     # --- API ---
-    api_token: str = ""  # if set, every /api request needs "Authorization: Bearer <token>"
+    api_token: str = ""  # if set, every /api request needs "Authorization: Bearer <token>". Comma-separate to rotate: "new,old"
+    enable_docs: bool = True  # /docs, /redoc, /openapi.json. The Docker image turns this off.
     cors_origins: str = "http://localhost:3000"  # comma-separated
     db_pool_size: int = 10
     match_strong: float = 0.40  # cosine(article, skill) thresholds for the UI badge; calibrate with `cli feed-stats`

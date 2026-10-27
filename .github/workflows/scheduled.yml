@@ -8,6 +8,7 @@ on:
     - cron: "30 5 * * *"     # daily briefing (05:30 UTC = 06:30 CET / 07:30 CEST: adjust to your morning)
     - cron: "0 21 * * 0"     # weekly theme, Sunday night
     - cron: "15 3 * * 1"     # retention
+    - cron: "30 4 * * 0"     # weekly progress backup (uploaded as an artifact: keep this repo PRIVATE)
   workflow_dispatch:
     inputs:
       command:
@@ -51,6 +52,7 @@ jobs:
             "30 5 * * *")  cmds=("generate-daily") ;;
             "0 21 * * 0")  cmds=("generate-weekly") ;;
             "15 3 * * 1")  cmds=("prune") ;;
+            "30 4 * * 0")  cmds=("export-progress --out /tmp/progress_export.json") ;;
             manual)        cmds=("$INPUT_COMMAND") ;;
             *) echo "unknown schedule $SCHEDULE"; exit 1 ;;
           esac
@@ -59,3 +61,10 @@ jobs:
             python -m app.cli $c
             echo "::endgroup::"
           done
+      - name: Upload progress backup
+        if: github.event.schedule == '30 4 * * 0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: progress-export
+          path: /tmp/progress_export.json
+          retention-days: 90

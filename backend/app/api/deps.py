@@ -68,7 +68,13 @@ async def require_token(settings: Cfg, authorization: Annotated[str | None, Head
     if not settings.api_token:
         return  # open (development). Set API_TOKEN in production.
     scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or not secrets.compare_digest(token.encode(), settings.api_token.encode()):
+    # API_TOKEN may hold several comma-separated tokens ("new,old") so a rotation has no downtime: add the new one,
+    # switch the frontend over, then remove the old one. Every candidate is compared (no early exit).
+    valid = [t.strip() for t in settings.api_token.split(",") if t.strip()]
+    ok = False
+    for t in valid:
+        ok |= secrets.compare_digest(token.encode(), t.encode())
+    if scheme.lower() != "bearer" or not ok:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid or missing token", headers={"WWW-Authenticate": "Bearer"})
 
 

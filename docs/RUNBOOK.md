@@ -17,7 +17,7 @@ cp frontend/.env.example frontend/.env.local   # then set API_TOKEN to the SAME 
 ## 2. Infrastructure (Postgres+pgvector, Redis)
 ```bash
 docker compose up -d db redis
-docker compose exec db psql -U postgres mlesprint -c '\dt' -c '\dx'   # expect 12 tables and the `vector` extension
+docker compose exec db psql -U postgres mlesprint -c '\dt' -c '\dx'   # expect 9 tables and the `vector` extension
 ```
 Migrations run automatically, but only when the data volume is empty (first boot). If you started the DB before this
 phase: `docker compose down -v && docker compose up -d db redis` (this deletes local data).
@@ -25,7 +25,7 @@ phase: `docker compose down -v && docker compose up -d db redis` (this deletes l
 ## 3. Backend install + tests
 ```bash
 cd backend && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
-pytest -q                                   # expect 77 passed
+pytest -q                                   # expect 85 passed
 ```
 
 ## 4. Four terminals
@@ -72,6 +72,20 @@ docker compose exec db psql -U postgres mlesprint \
   and skill badges. If `/` says "not ready", click Generate now (needs the worker) or run `generate-daily`.
 - Rough LLM cost (estimate, check your console): one weekly or daily generation is ~10-15k input and ~3-6k output
   tokens, i.e. a few cents on Sonnet-class pricing; summaries on Haiku are far cheaper. Order of a few dollars a month.
+
+## 5b. Starting mid-week (roadmap week 1, today's briefing)
+The weekly job normally runs Sunday night. To start now, in `backend/` with the venv active:
+```bash
+MONDAY=$(python3 -c "import datetime as d; t=d.date.today(); print(t-d.timedelta(days=t.weekday()))"); echo $MONDAY
+# put ROADMAP_START=<that date> in ../.env  (week 1 = the calendar week containing it)
+python -m app.cli generate-weekly --dry-run --date $MONDAY      # check the <roadmap_week> block is in the prompt
+python -m app.cli generate-weekly --date $MONDAY --force        # --force replaces any free-mode theme already created
+python -m app.cli generate-daily --force                        # today = roadmap day <weekday number>
+python -m app.cli usage                                         # what that cost
+```
+You skip the outline items for the days already past this week (they are in `backend/curriculum/roadmap.yaml`);
+do the missed ones on the light weekend days, or set `ROADMAP_START` to next Monday and treat this week as setup.
+`generate-daily --dry-run` needs the weekly theme stored first (run `generate-weekly` before it).
 
 ## 6. Calibrate the relevance engine
 ```bash

@@ -1,7 +1,7 @@
 # One image, three roles: the API (default CMD), a Celery worker, and Celery beat. Override the command per service.
 FROM python:3.12-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PYTHONPATH=/srv
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PYTHONPATH=/srv ENABLE_DOCS=false
 WORKDIR /srv
 
 # Layer caching: dependencies change rarely, code often. Install ONLY the dependency list from pyproject.toml

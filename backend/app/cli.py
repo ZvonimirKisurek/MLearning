@@ -47,6 +47,10 @@ def main() -> int:
     ing.add_argument("--source", action="append", help="limit to slug (repeatable)")
     lim = sub.add_parser("summarize", help="write AI summaries for recent articles that lack one")
     lim.add_argument("--limit", type=int)
+    sub.add_parser("usage", help="LLM spend ledger (last 7 days) and the daily cap")
+    sub.add_parser("retro", help="weekly retrospective: completion, click-through signals, skill movement")
+    exp = sub.add_parser("export-progress", help="dump skills/history/briefings/tasks to JSON (backup)")
+    exp.add_argument("--out", default="progress_export.json")
     sub.add_parser("prune", help="delete old articles/duplicates (retention)")
     emb = sub.add_parser("embed-skills", help="(re)compute skill embeddings after editing skills.description")
     emb.add_argument("--force", action="store_true", help="recompute all, not just missing")
@@ -68,6 +72,22 @@ def main() -> int:
 
         specs = load_sources(get_settings().sources_file)
         print(f"synced {repository.upsert_sources(specs)} sources")
+        return 0
+    if args.cmd == "usage":
+        from app.curriculum.usage import usage_report
+
+        print(usage_report())
+        print(f"daily cap: ${get_settings().llm_daily_budget_usd:.2f} (LLM_DAILY_BUDGET_USD)")
+        return 0
+    if args.cmd == "retro":
+        from app import retro
+
+        print(retro.render(retro.analyze(retro.fetch_rows()), retro.latest_milestones()))
+        return 0
+    if args.cmd == "export-progress":
+        from app import retro
+
+        print(retro.export_progress(args.out), "->", args.out)
         return 0
     if args.cmd == "prune":
         from app.maintenance import prune
@@ -130,4 +150,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from app.db import close_pool
+
+    try:
+        code = main()
+    finally:
+        close_pool()
+    sys.exit(code)

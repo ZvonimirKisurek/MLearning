@@ -22,7 +22,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         await pool.close()
 
-    app = FastAPI(title="MLE-Sprint API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="MLE-Sprint API", version="0.1.0", lifespan=lifespan,
+                  docs_url="/docs" if settings.enable_docs else None, redoc_url="/redoc" if settings.enable_docs else None,
+                  openapi_url="/openapi.json" if settings.enable_docs else None)
 
     # CORS: browsers block a page on origin A from reading responses from origin B unless B opts in via
     # headers. Our default path avoids the problem (Next.js server components/actions call this API

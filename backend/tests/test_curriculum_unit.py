@@ -11,6 +11,7 @@ from app.curriculum import prompts
 from app.curriculum.llm import LLMRefusal, LLMTruncated, LLMValidationFailed, StructuredLLM
 from app.curriculum.ranking import rank_articles
 from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, WeeklyThemeOutput
+from app.curriculum.usage import NullUsage
 from app.curriculum.skills import apply_delta, compute_delta, headroom_factor
 from app.curriculum.types import RankedArticle
 from tests.factories import daily_dict, make_candidate, make_skills, unit_vec, weekly_dict
@@ -122,7 +123,7 @@ def make_llm(responses, captured=None, **settings):
                                          "content": [{"type": "text", "text": body["text"]}], "stop_reason": body.get("stop", "end_turn"),
                                          "usage": {"input_tokens": 10, "output_tokens": 5}})
     client = anthropic.Anthropic(api_key="k", max_retries=0, http_client=httpx2.Client(transport=httpx2.MockTransport(handler)))
-    return StructuredLLM(Settings(anthropic_api_key="k", **settings), client=client)
+    return StructuredLLM(Settings(anthropic_api_key="k", **settings), client=client, usage=NullUsage())
 
 
 def test_repair_loop_recovers_and_sends_errors_back():

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import atexit
+
 from psycopg import Connection
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
@@ -31,3 +33,15 @@ def get_pool() -> ConnectionPool:
             open=True,
         )
     return _pool
+
+
+def close_pool() -> None:
+    """Close the pool and join its worker threads. Without this, interpreter shutdown tears the threads down
+    badly and every CLI command hangs ~5-15 seconds at exit with "couldn't stop thread" warnings."""
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+atexit.register(close_pool)

@@ -53,6 +53,7 @@ celery -A app.celery_app worker -l info & celery -A app.celery_app beat -l info
 ## Operating it
 - **Run it locally with real keys, first run, calibration, roadmap mode:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
 - **Deploy (Vercel + Supabase + one container + GitHub Actions cron), Docker, CI:** [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- **Day 1, code tour, cost and security checks, weekly retrospective:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md) (5b), [`docs/CODE_TOUR.md`](docs/CODE_TOUR.md), [`docs/SAFETY.md`](docs/SAFETY.md), [`docs/RETROSPECTIVE.md`](docs/RETROSPECTIVE.md)
 - **4-week roadmap that steers the weekly generator:** [`backend/curriculum/roadmap.yaml`](backend/curriculum/roadmap.yaml)
 
 ## How the intelligence layer works (read this to learn the ML concepts)
