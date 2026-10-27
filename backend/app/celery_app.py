@@ -14,6 +14,7 @@ app.conf.update(
         "ingest-every-6h": {"task": "app.tasks.ingest_all", "schedule": crontab(minute=0, hour="*/6")},
         # 20 minutes after each ingestion run, summarise whatever it brought in.
         "summarize-after-ingest": {"task": "app.tasks.summarize_recent_articles", "schedule": crontab(minute=20, hour="*/6")},
+        "prune-weekly": {"task": "app.tasks.prune_old_data", "schedule": crontab(minute=15, hour=3, day_of_week="mon")},
         "weekly-theme-sunday-night": {"task": "app.tasks.generate_weekly_theme", "schedule": crontab(minute=0, hour=22, day_of_week="sun")},
         # 06:30 so the 06:00 ingestion run (which feeds the candidate pool) has finished.
         "daily-briefing-morning": {"task": "app.tasks.generate_daily_briefing", "schedule": crontab(minute=30, hour=6)},

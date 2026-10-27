@@ -40,17 +40,22 @@ async function FeedContent({ searchParams }: { searchParams: SearchParams }) {
   const category = one(sp.category);
   const skill = one(sp.skill);
   const sort = one(sp.sort);
+  const match = one(sp.match);
   const params = {
     category: category && CATEGORIES.includes(category) ? category : undefined,
     skill: skill && /^[a-z0-9-]{1,40}$/.test(skill) ? skill : undefined,
     sort: sort === "relevance" ? "relevance" : undefined,
+    match: match === "moderate" || match === "strong" ? match : undefined,
   };
-  const q: FeedQuery = { category: params.category as Category | undefined, skill: params.skill, sort: params.sort as FeedQuery["sort"] };
+  const q: FeedQuery = { category: params.category as Category | undefined, skill: params.skill, sort: params.sort as FeedQuery["sort"], min_strength: params.match as FeedQuery["min_strength"] };
 
   const [data, err] = await attempt(Promise.all([getFeed(q), getSkills()])); // parallel, not sequential
   if (!data) return <ApiProblem error={err} />;
   const [page, skills] = data;
-  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
+  // The client-side "Load more" calls our /api/feed proxy, which speaks API names: `match` becomes `min_strength`.
+  const qp = new URLSearchParams(Object.entries(params).filter(([k, v]) => v && k !== "match") as [string, string][]);
+  if (params.match) qp.set("min_strength", params.match);
+  const query = qp.toString();
   return (
     <>
       <FeedFilters params={params} skills={skills} />

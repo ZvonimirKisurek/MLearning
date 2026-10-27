@@ -32,11 +32,13 @@ export interface DayPlan {
   reading_hint: string; build_hint: string;
 }
 
+export interface RoadmapInfo { index: number; of: number; title: string; goal: string; deliverable: string; milestones: string[] }
+
 export interface WeeklyTheme {
   id: string; week_start: string;
   theme: {
     title: string; rationale: string; market_signals: string[]; focus_skills: string[];
-    learning_objectives: string[]; key_articles: ArticleRef[]; daily_plan: DayPlan[];
+    learning_objectives: string[]; key_articles: ArticleRef[]; daily_plan: DayPlan[]; roadmap: RoadmapInfo | null;
   };
 }
 
@@ -60,4 +62,4 @@ export interface FeedItem {
 }
 
 export interface FeedPage { items: FeedItem[]; next_cursor: string | null }
-export interface FeedQuery { category?: Category; skill?: string; sort?: "recent" | "relevance"; cursor?: string; limit?: number }
+export interface FeedQuery { category?: Category; skill?: string; sort?: "recent" | "relevance"; min_strength?: "moderate" | "strong"; cursor?: string; limit?: number }

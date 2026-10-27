@@ -1,0 +1,26 @@
+# Single-host production (any VPS with Docker): API + Celery worker + Celery beat + Redis.
+# The database is external (Supabase). Run:  docker compose -f docker-compose.prod.yml up -d --build
+# Not needed if you use the GitHub Actions schedule + TASK_BACKEND=inline (see docs/DEPLOY.md).
+x-backend: &backend
+  build: ./backend
+  env_file: .env
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *backend
+    ports: ["8000:8000"]   # put Caddy/nginx/Cloudflare Tunnel in front for HTTPS
+  worker:
+    <<: *backend
+    command: celery -A app.celery_app worker --loglevel=INFO --concurrency=2
+    environment: {REDIS_URL: "redis://redis:6379/0"}
+    depends_on: [redis]
+  beat:
+    <<: *backend
+    command: celery -A app.celery_app beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule
+    environment: {REDIS_URL: "redis://redis:6379/0"}
+    depends_on: [redis]
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no   # queue only; losing it loses nothing durable
+    restart: unless-stopped

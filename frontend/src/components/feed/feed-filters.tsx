@@ -4,7 +4,7 @@ import type { Category, Skill } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CATEGORY_LABEL } from "./article-card";
 
-export interface FeedParams { category?: string; skill?: string; sort?: string }
+export interface FeedParams { category?: string; skill?: string; sort?: string; match?: string }
 
 function href(base: FeedParams, patch: Partial<FeedParams>) {
   const merged = { ...base, ...patch };
@@ -46,6 +46,11 @@ export function FeedFilters({ params, skills }: { params: FeedParams; skills: Sk
       <Row label="Sort">
         <Chip to={href(params, { sort: undefined })} active={!params.sort || params.sort === "recent"}>Newest</Chip>
         <Chip to={href(params, { sort: "relevance" })} active={params.sort === "relevance"}>Most relevant to my gaps</Chip>
+      </Row>
+      <Row label="Match">
+        <Chip to={href(params, { match: undefined })} active={!params.match}>Any (show everything)</Chip>
+        <Chip to={href(params, { match: "moderate" })} active={params.match === "moderate"}>Related or stronger</Chip>
+        <Chip to={href(params, { match: "strong" })} active={params.match === "strong"}>Strong only</Chip>
       </Row>
       <Row label="Type">
         <Chip to={href(params, { category: undefined })} active={!params.category}>All</Chip>

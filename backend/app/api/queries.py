@@ -127,7 +127,7 @@ def _strength(sim: float, s: Settings) -> str:
 
 async def fetch_feed(
     conn: AsyncConnection, settings: Settings, *, category: str | None, skill: str | None, sort: str,
-    limit: int, cursor: str | None, days: int,
+    limit: int, cursor: str | None, days: int, min_strength: str | None = None,
 ) -> dict:
     """Keyset-paginated feed of canonical (de-duplicated) articles.
 
@@ -154,6 +154,10 @@ async def fetch_feed(
     if skill:
         outer.append("best_skill = %(skill)s")
         params["skill"] = skill
+    if min_strength:
+        # Precision knob: drop articles whose best-skill similarity is below the chosen bucket's threshold.
+        params["min_sim"] = settings.match_strong if min_strength == "strong" else settings.match_moderate
+        outer.append("similarity >= %(min_sim)s")
     if cursor:
         params["ck"], params["cid"] = _decode(cursor, sort)
         outer.append(f"({key}, id) < (%(ck)s::{'timestamptz' if sort == 'recent' else 'double precision'}, %(cid)s::uuid)")

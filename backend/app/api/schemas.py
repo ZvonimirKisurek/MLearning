@@ -62,8 +62,18 @@ class BriefingOut(BaseModel):
     tasks: list[TaskOut]
 
 
+class RoadmapInfo(BaseModel):
+    index: int
+    of: int
+    title: str
+    goal: str
+    deliverable: str
+    milestones: list[str]
+
+
 class WeeklyThemeBody(WeeklyThemeOutput):
     key_articles: list[ArticleRefOut]
+    roadmap: RoadmapInfo | None = None
 
 
 class WeeklyThemeOut(BaseModel):

@@ -130,12 +130,30 @@ def render_articles(articles: list[RankedArticle], window_days: int) -> str:
     return f'<articles count="{len(articles)}" window="last {window_days} days">\n' + "\n".join(blocks) + "\n</articles>"
 
 
-def build_weekly_prompt(week_start: date, today: date, skills: list[Skill], articles: list[RankedArticle], window_days: int) -> str:
+ROADMAP_RULES = """\
+
+# Roadmap mode (this week follows a fixed curriculum)
+- <roadmap_week> is the SPINE. Use its focus skills, goal, milestones and day-by-day outline. title, focus_skills,
+  learning_objectives and daily_plan must follow it: day N of daily_plan covers the roadmap's day N outline.
+- The articles do not choose the topic. Use them to (a) pick timely readings for key_article_ids, (b) write
+  market_signals, (c) tune reading_hint/build_hint to current tooling. Never reorder or drop a milestone."""
+
+
+def render_roadmap_week(rm_title: str, wk, total: int) -> str:
+    days = "\n".join(f"  day {d.day} [{d.skill}]: {_esc(d.focus)}" for d in wk.daily_outline)
+    miles = "\n".join(f"  - {_esc(m)}" for m in wk.milestones)
+    return (f'<roadmap_week roadmap="{_esc(rm_title)}" index="{wk.index}" of="{total}">\ntitle: {_esc(wk.title)}\n'
+            f"focus_skills: {', '.join(wk.focus_skills)}\ngoal: {_esc(wk.goal)}\ndeliverable: {_esc(wk.deliverable)}\n"
+            f"milestones:\n{miles}\ndaily_outline:\n{days}\n</roadmap_week>")
+
+
+def build_weekly_prompt(week_start: date, today: date, skills: list[Skill], articles: list[RankedArticle], window_days: int,
+                        roadmap_block: str | None = None) -> str:
     # Long reference material first, the instruction last: models follow the final instruction more
     # reliably when it is closest to where they start generating.
     return (
         f"<context>today: {today:%Y-%m-%d (%A)}; you are planning the week starting Monday {week_start:%Y-%m-%d}</context>\n"
-        f"{render_skills(skills)}\n{render_articles(articles, window_days)}\n\n"
+        f"{render_skills(skills)}\n{roadmap_block + chr(10) if roadmap_block else ''}{render_articles(articles, window_days)}\n\n"
         "Design next week's learning theme and the 7-day plan."
     )
 
@@ -149,9 +167,12 @@ def build_daily_prompt(
         for r in recent_work
     ) or "- (nothing yet)"
     objectives = "\n".join(f"- {_esc(o)}" for o in theme["learning_objectives"])
+    rm = theme.get("roadmap")
+    roadmap = (f"roadmap week {rm['index']}/{rm['of']} deliverable: {_esc(rm['deliverable'])}\n"
+               "milestones:\n" + "\n".join(f"- {_esc(m)}" for m in rm["milestones"]) + "\n") if rm else ""
     return (
         f"<today>{day:%Y-%m-%d (%A)}, ISO day {day.isoweekday()}</today>\n"
-        f"<weekly_theme>\ntitle: {_esc(theme['title'])}\nrationale: {_esc(theme['rationale'])}\nobjectives:\n{objectives}\n</weekly_theme>\n"
+        f"<weekly_theme>\ntitle: {_esc(theme['title'])}\nrationale: {_esc(theme['rationale'])}\nobjectives:\n{objectives}\n{roadmap}</weekly_theme>\n"
         f"<todays_plan>\nfocus: {_esc(plan_entry['focus'])}\nskill: {plan_entry['skill_slug']}\nintensity: {plan_entry['intensity']}\n"
         f"reading_hint: {_esc(plan_entry['reading_hint'])}\nbuild_hint: {_esc(plan_entry['build_hint'])}\n</todays_plan>\n"
         f"{render_skills(skills)}\n<recent_work>\n{recent}\n</recent_work>\n{render_articles(articles, window_days)}\n\n"

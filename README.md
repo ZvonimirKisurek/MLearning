@@ -50,6 +50,11 @@ celery -A app.celery_app worker -l info & celery -A app.celery_app beat -l info
 ```
 **Supabase:** `supabase link && supabase db push`, then set `DATABASE_URL` to the connection string (session pooler works; transaction pooler works too since prepared statements are disabled).
 
+## Operating it
+- **Run it locally with real keys, first run, calibration, roadmap mode:** [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
+- **Deploy (Vercel + Supabase + one container + GitHub Actions cron), Docker, CI:** [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- **4-week roadmap that steers the weekly generator:** [`backend/curriculum/roadmap.yaml`](backend/curriculum/roadmap.yaml)
+
 ## How the intelligence layer works (read this to learn the ML concepts)
 
 ```

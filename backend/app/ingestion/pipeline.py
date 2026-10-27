@@ -111,8 +111,10 @@ def store(outcomes: list[SourceOutcome], settings: Settings, embedder: Embedder)
         for (o, item, url, h), vec in zip(fresh, vectors):
             near = repo.find_nearest(vec, window_days=settings.dedup_window_days)
             is_dup = near is not None and near[1] >= settings.dedup_threshold
+            # A duplicate's vector is never queried again (the HNSW index and the feed only use canonical
+            # articles), and a 1536-float vector is ~6 KB, so we don't store it: it keeps the database small.
             new_id = repo.insert_article(
-                o.state.id, item, url, h, vec,
+                o.state.id, item, url, h, None if is_dup else vec,
                 duplicate_of=near[0] if is_dup else None, duplicate_sim=near[1] if near else None,
             )
             if new_id:

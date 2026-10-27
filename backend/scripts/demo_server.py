@@ -84,6 +84,10 @@ def main():
             c.execute(m.read_text())
     os.environ["DATABASE_URL"] = uri
     os.environ.setdefault("TIMEZONE", "UTC")
+    # Demo the roadmap: week 1 starts on this week's Monday.
+    monday = datetime.now(timezone.utc).date() - timedelta(days=datetime.now(timezone.utc).weekday())
+    os.environ.setdefault("ROADMAP_START", monday.isoformat())
+    os.environ.setdefault("ROADMAP_FILE", str(ROOT / "backend" / "curriculum" / "roadmap.yaml"))
 
     from app.config import Settings, get_settings
     from app.curriculum import generators
@@ -134,7 +138,7 @@ def main():
                 d = {"title": "Build a retrieval pipeline on pgvector and measure it",
                      "rationale": "Several engineering posts this week show teams moving retrieval into Postgres and measuring it properly. Your Postgres strength lets you move fast while closing the RAG, vector-DB and evaluation gaps.",
                      "market_signals": ["pgvector keeps gaining features for filtered search", "Teams are adding retrieval-specific evals, not just answer quality", "Hybrid BM25 + dense retrieval is becoming the default"],
-                     "focus_skills": ["rag", "vector-db"],
+                     "focus_skills": sorted(grounding.required_focus or {"rag", "vector-db"}),
                      "learning_objectives": ["Explain cosine similarity and HNSW trade-offs", "Chunk and embed a corpus into pgvector", "Measure recall@k before and after hybrid search"],
                      "key_article_ids": [a[0] for a in arts[:3]],
                      "daily_plan": [{"day": i + 1, "focus": f, "skill_slug": s, "intensity": it, "reading_hint": "an engineering post on this topic", "build_hint": "a small, runnable script"} for i, (f, s, it) in enumerate(plan)]}

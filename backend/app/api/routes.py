@@ -52,9 +52,10 @@ async def feed(
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
     cursor: Annotated[str | None, Query(max_length=200)] = None,
     days: Annotated[int, Query(ge=1, le=60)] = 14,
+    min_strength: Annotated[Literal["moderate", "strong"] | None, Query(description="hide articles weaker than this skill-match bucket")] = None,
 ):
     try:
-        return await queries.fetch_feed(conn, cfg, category=category, skill=skill, sort=sort, limit=limit, cursor=cursor, days=days)
+        return await queries.fetch_feed(conn, cfg, category=category, skill=skill, sort=sort, limit=limit, cursor=cursor, days=days, min_strength=min_strength)
     except queries.BadCursor as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
 

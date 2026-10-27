@@ -1,0 +1,89 @@
+# 4-week Skill Acceleration Plan: senior mobile/backend engineer -> ML engineer foundations.
+# ~90 min/weekday (25 reading + 60 building), lighter weekends: ~40-45 hours in total.
+# Each week's deliverable feeds the next: retrieval -> training -> deployment -> LLM internals.
+# Activate by setting ROADMAP_START=<the Monday you begin> in .env.
+title: "MLE foundations in 4 weeks"
+weeks:
+  - index: 1
+    title: "Retrieval engineering: RAG on pgvector, measured"
+    focus_skills: [rag, vector-db, llm-evals]
+    goal: "Build and MEASURE a retrieval pipeline on Postgres/pgvector. Understand embeddings, chunking, ANN indexes, hybrid search and why evaluation comes first."
+    deliverable: "A `rag-lab` repo: corpus ingestion, 3 chunkers, pgvector HNSW index, hybrid (BM25 + dense) retrieval with reciprocal rank fusion, and an eval report (recall@k, MRR) on >= 30 labeled queries."
+    milestones:
+      - "Reproduce cosine similarity in numpy and match pgvector's <=> operator on real vectors"
+      - "Compare >= 3 chunking strategies by recall@5, not by intuition"
+      - "Measure HNSW ef_search vs recall and latency, and explain the trade-off"
+      - "Implement hybrid retrieval (Postgres full-text + dense) fused with RRF"
+      - "Hand-label >= 30 query/answer-passage pairs and report recall@k and MRR"
+      - "One-page write-up: which change moved recall the most, and why"
+    daily_outline:
+      - {day: 1, skill: vector-db, focus: "Embeddings and cosine similarity from scratch in numpy; verify against pgvector"}
+      - {day: 2, skill: rag, focus: "Chunking: fixed-size, recursive and sentence-based chunkers over a real corpus"}
+      - {day: 3, skill: vector-db, focus: "pgvector indexes: HNSW vs IVFFlat, ef_search vs recall and latency"}
+      - {day: 4, skill: rag, focus: "Hybrid retrieval: Postgres full-text search + dense, fused with RRF"}
+      - {day: 5, skill: llm-evals, focus: "Eval harness: 30 labeled queries, recall@k, MRR, nDCG"}
+      - {day: 6, skill: rag, focus: "Reranking experiment (cross-encoder or LLM rerank): measure gain vs cost"}
+      - {day: 7, skill: llm-evals, focus: "Write-up, plots and README; decide what to improve next"}
+
+  - index: 2
+    title: "Training from first principles: PyTorch and classical ML"
+    focus_skills: [pytorch, classical-ml]
+    goal: "Understand how models learn: gradients, loss, optimisation, over/under-fitting, evaluation. Finish by training a real model on YOUR data."
+    deliverable: "A relevance classifier trained on the labels you created with `python -m app.cli calibrate` (embeddings as features), compared against the plain cosine-threshold baseline using precision/recall and PR-AUC."
+    milestones:
+      - "Linear and logistic regression with hand-derived gradients in numpy"
+      - "Same models in PyTorch; confirm autograd matches your manual gradients"
+      - "A complete training loop: DataLoader, train/val split, early stopping, checkpointing"
+      - "Show over-fitting on purpose, then fix it with regularisation and cross-validation"
+      - "Beat or lose to gradient boosting (sklearn) with a small MLP, and explain why"
+      - "Train the article-relevance classifier and compare to the threshold baseline"
+    daily_outline:
+      - {day: 1, skill: classical-ml, focus: "Linear regression: normal equation vs gradient descent in numpy; loss surfaces"}
+      - {day: 2, skill: pytorch, focus: "Tensors and autograd; logistic regression in PyTorch matching numpy"}
+      - {day: 3, skill: pytorch, focus: "A full training loop: DataLoader, validation, early stopping, checkpoints"}
+      - {day: 4, skill: classical-ml, focus: "Bias-variance, regularisation, cross-validation; sklearn baselines"}
+      - {day: 5, skill: classical-ml, focus: "Gradient boosting vs a small MLP on tabular data; precision/recall/PR-AUC"}
+      - {day: 6, skill: pytorch, focus: "Build the article-relevance classifier on your own calibration labels"}
+      - {day: 7, skill: classical-ml, focus: "Compare against the threshold baseline; write up what the model learned"}
+
+  - index: 3
+    title: "From notebook to production: MLOps and model deployment"
+    focus_skills: [mlops, llm-evals]
+    goal: "Take last week's model from a notebook to a tracked, tested, containerised, monitored service. This is where your backend background is an advantage."
+    deliverable: "The relevance model served by a FastAPI endpoint from an ONNX file, with MLflow run tracking, a parity test, a load-test report (p50/p95), a CI job, and a drift monitor on the feed's similarity distribution."
+    milestones:
+      - "Track Week 2 experiments (params, metrics, artifacts) in MLflow"
+      - "Export to ONNX and prove numerical parity with the PyTorch model in a test"
+      - "Serve it behind FastAPI with input validation; load-test and report p50/p95 latency"
+      - "Containerise and add CI that runs model tests against golden outputs"
+      - "Monitor drift: compare today's similarity distribution to a reference (PSI or KS test) and define an alert"
+      - "Decision doc: batch vs online inference, canary rollout, rollback"
+    daily_outline:
+      - {day: 1, skill: mlops, focus: "Experiment tracking with MLflow for the Week 2 runs"}
+      - {day: 2, skill: mlops, focus: "Export to ONNX; numerical parity test against PyTorch"}
+      - {day: 3, skill: mlops, focus: "Serve the model with FastAPI; validation, batching, load test (p50/p95)"}
+      - {day: 4, skill: mlops, focus: "Dockerise and add CI with golden-output model tests"}
+      - {day: 5, skill: llm-evals, focus: "Monitoring: drift detection on similarity/relevance distributions with an alert rule"}
+      - {day: 6, skill: mlops, focus: "Quantisation (int8): accuracy vs latency vs size trade-off"}
+      - {day: 7, skill: mlops, focus: "Decision doc: how you would deploy this at scale (batch/online, canary, rollback)"}
+
+  - index: 4
+    title: "Inside the LLM: transformers and fine-tuning"
+    focus_skills: [llm-finetuning, pytorch, llm-evals]
+    goal: "Understand what an LLM is made of by building a small one, then adapt a small open model with LoRA and decide, with evidence, when fine-tuning beats prompting."
+    deliverable: "(1) A ~100-line GPT trained on tiny text with a loss curve. (2) A LoRA fine-tune of a small open model on a narrow task from your own data. (3) An eval comparing it with a prompted baseline (quality, cost, latency) and a decision memo."
+    milestones:
+      - "Implement BPE tokenisation basics and explain what the model actually sees"
+      - "Write scaled dot-product and multi-head attention from scratch; check shapes and causal masking"
+      - "Assemble a transformer block and train a mini-GPT; read the loss curve"
+      - "Run a LoRA fine-tune (PEFT/TRL) of a small open model on Colab for a narrow task"
+      - "Evaluate on held-out data against a prompted baseline using Week 1's eval discipline"
+      - "Decision memo: when would you fine-tune, prompt, or retrieve?"
+    daily_outline:
+      - {day: 1, skill: llm-finetuning, focus: "Tokenisation and BPE by hand; embeddings and positional encodings"}
+      - {day: 2, skill: pytorch, focus: "Self-attention and multi-head attention from scratch, with causal masking"}
+      - {day: 3, skill: pytorch, focus: "Assemble a transformer block and train a mini-GPT on tiny text"}
+      - {day: 4, skill: llm-finetuning, focus: "LoRA concepts; prepare the dataset and chat template; set up a PEFT run on Colab"}
+      - {day: 5, skill: llm-finetuning, focus: "Run the fine-tune; track loss; check for train/test leakage"}
+      - {day: 6, skill: llm-evals, focus: "Evaluate fine-tuned vs prompted baseline on held-out data (quality, cost, latency)"}
+      - {day: 7, skill: llm-finetuning, focus: "Decision memo and a retrospective: what to study next quarter"}

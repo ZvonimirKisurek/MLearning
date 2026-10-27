@@ -34,6 +34,7 @@ class GroundingContext:
 
     article_ids: frozenset[str]  # short ids shown in the prompt, e.g. "A7"
     skill_slugs: frozenset[str]
+    required_focus: frozenset[str] | None = None  # set in roadmap mode: focus_skills must equal this
 
 
 def _grounding(info: ValidationInfo) -> GroundingContext | None:
@@ -92,7 +93,10 @@ class WeeklyThemeOutput(_Strict):
     daily_plan: list[DayPlan] = Field(min_length=7, max_length=7, description="Exactly one entry per weekday 1..7")
 
     @model_validator(mode="after")
-    def _days_complete(self) -> WeeklyThemeOutput:
+    def _days_complete(self, info: ValidationInfo) -> WeeklyThemeOutput:
+        g = _grounding(info)
+        if g is not None and g.required_focus is not None and set(self.focus_skills) != set(g.required_focus):
+            raise ValueError(f"focus_skills must be exactly {sorted(g.required_focus)} (the roadmap's skills for this week)")
         if sorted(d.day for d in self.daily_plan) != list(range(1, 8)):
             raise ValueError("daily_plan must contain each day 1..7 exactly once")
         return self

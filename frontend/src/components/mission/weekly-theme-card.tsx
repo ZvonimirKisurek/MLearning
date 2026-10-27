@@ -17,6 +17,7 @@ export function WeeklyThemeCard({ weekly, today }: { weekly: WeeklyTheme; today:
       <CardHeader>
         <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-violet">
           <Compass className="size-3.5" /> This week&apos;s theme
+          {t.roadmap && <Badge variant="violet" className="ml-1">Roadmap · week {t.roadmap.index} of {t.roadmap.of}</Badge>}
         </div>
         <CardTitle className="text-lg leading-snug">{t.title}</CardTitle>
       </CardHeader>
@@ -25,6 +26,15 @@ export function WeeklyThemeCard({ weekly, today }: { weekly: WeeklyTheme; today:
         <div className="flex flex-wrap gap-1.5">
           {t.focus_skills.map((s) => <Badge key={s} variant="violet">{skillLabel(s)}</Badge>)}
         </div>
+        {t.roadmap && (
+          <div className="rounded-md border border-violet/25 bg-violet/5 p-3">
+            <div className="mb-1 font-mono text-[10px] uppercase tracking-widest text-violet">Week deliverable</div>
+            <p>{t.roadmap.deliverable}</p>
+            <ul className="mt-2 space-y-1 text-muted-foreground">
+              {t.roadmap.milestones.map((m) => <li key={m} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-violet" />{m}</li>)}
+            </ul>
+          </div>
+        )}
         <ul className="space-y-1">
           {t.learning_objectives.map((o) => (
             <li key={o} className="flex gap-2"><span className="mt-2 size-1 shrink-0 rounded-full bg-violet" />{o}</li>

@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.config import Settings, get_settings
-from app.curriculum import prompts, repository
+from app.curriculum import prompts, repository, roadmap as roadmap_mod
 from app.curriculum.llm import StructuredLLM
 from app.curriculum.ranking import rank_articles
 from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, WeeklyThemeOutput
@@ -84,14 +84,23 @@ def generate_weekly_theme(
 
     skills = ensure_skill_embeddings(repo.load_skills(), embedder, repo, settings)
     articles = _select(skills, settings, repo)
-    user = prompts.build_weekly_prompt(week_start, today, skills, articles, settings.candidate_window_days)
+    active = roadmap_mod.active_week(settings, week_start)
+    block = prompts.render_roadmap_week(active[0].title, active[1], len(active[0].weeks)) if active else None
+    system = prompts.WEEKLY_SYSTEM + (prompts.ROADMAP_RULES if active else "")
+    user = prompts.build_weekly_prompt(week_start, today, skills, articles, settings.candidate_window_days, block)
     if dry_run:
-        return {"system": prompts.WEEKLY_SYSTEM, "user": user, "articles": len(articles)}
+        return {"system": system, "user": user, "articles": len(articles)}
 
-    out = (llm or StructuredLLM(settings)).generate(
-        system=prompts.WEEKLY_SYSTEM, user=user, output_model=WeeklyThemeOutput, grounding=_grounding(articles, skills))
+    grounding = _grounding(articles, skills)
+    if active:  # the repair loop will make the model fix a plan that drifts from the roadmap
+        grounding = GroundingContext(grounding.article_ids, grounding.skill_slugs, frozenset(active[1].focus_skills))
+    out = (llm or StructuredLLM(settings)).generate(system=system, user=user, output_model=WeeklyThemeOutput, grounding=grounding)
     by_id = {a.short_id: a for a in articles}
     payload = out.model_dump()
+    if active:
+        wk = active[1]
+        payload["roadmap"] = {"index": wk.index, "of": len(active[0].weeks), "title": wk.title, "goal": wk.goal,
+                              "deliverable": wk.deliverable, "milestones": wk.milestones}
     payload["key_articles"] = [_article_ref(by_id[i]) for i in out.key_article_ids]  # ids -> real URLs, by code
     theme_id = repo.save_weekly_theme(week_start, payload, replace=force)
     log.info("weekly theme saved: %s", out.title)

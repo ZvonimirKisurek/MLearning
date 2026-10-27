@@ -1,0 +1,61 @@
+# Runs the recurring jobs on GitHub's free scheduler instead of a 24/7 Celery worker + Redis.
+# Use this OR the Celery beat schedule, never both. Cron times are UTC. Scheduled workflows only run from the
+# default branch, can start several minutes late, and are paused by GitHub after 60 days without repo activity.
+name: Scheduled jobs
+on:
+  schedule:
+    - cron: "5 */6 * * *"    # ingest + summarise, every 6 hours
+    - cron: "30 5 * * *"     # daily briefing (05:30 UTC = 06:30 CET / 07:30 CEST: adjust to your morning)
+    - cron: "0 21 * * 0"     # weekly theme, Sunday night
+    - cron: "15 3 * * 1"     # retention
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "CLI command, e.g. 'ingest', 'summarize --limit 120', 'generate-daily --force'"
+        required: true
+        default: "ingest"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mle-sprint-jobs   # never run two jobs against the database at once
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: backend } }
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      USER_AGENT: ${{ vars.USER_AGENT }}
+      TIMEZONE: ${{ vars.TIMEZONE || 'UTC' }}
+      ROADMAP_START: ${{ vars.ROADMAP_START }}
+      MATCH_STRONG: ${{ vars.MATCH_STRONG || '0.40' }}
+      MATCH_MODERATE: ${{ vars.MATCH_MODERATE || '0.28' }}
+      SCHEDULE: ${{ github.event.schedule }}
+      INPUT_COMMAND: ${{ github.event.inputs.command }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: backend/pyproject.toml }
+      - run: pip install .
+      - name: Run job(s)
+        run: |
+          set -euo pipefail
+          case "${SCHEDULE:-manual}" in
+            "5 */6 * * *") cmds=("ingest" "summarize --limit 120") ;;
+            "30 5 * * *")  cmds=("generate-daily") ;;
+            "0 21 * * 0")  cmds=("generate-weekly") ;;
+            "15 3 * * 1")  cmds=("prune") ;;
+            manual)        cmds=("$INPUT_COMMAND") ;;
+            *) echo "unknown schedule $SCHEDULE"; exit 1 ;;
+          esac
+          for c in "${cmds[@]}"; do
+            echo "::group::python -m app.cli $c"
+            python -m app.cli $c
+            echo "::endgroup::"
+          done

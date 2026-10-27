@@ -59,6 +59,18 @@ class Settings(BaseSettings):
     match_strong: float = 0.40  # cosine(article, skill) thresholds for the UI badge; calibrate with `cli feed-stats`
     match_moderate: float = 0.28
 
+    # "celery": enqueue to a worker via Redis. "inline": run in a background thread of the API process
+    # (single-user deployments with no Redis; jobs are lost if the process restarts mid-run - just click again).
+    task_backend: str = "celery"
+
+    # --- 4-week roadmap steering (off unless ROADMAP_START is set to the Monday you begin) ---
+    roadmap_file: str = "curriculum/roadmap.yaml"
+    roadmap_start: str = ""  # YYYY-MM-DD
+
+    # --- retention (keeps a free-tier database small) ---
+    retention_days: int = 60
+    duplicate_retention_days: int = 7
+
     timezone: str = "UTC"  # IANA name; drives "today", the Sunday-night/morning schedules
 
 

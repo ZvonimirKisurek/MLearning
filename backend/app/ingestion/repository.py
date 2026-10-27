@@ -90,7 +90,7 @@ def find_nearest(embedding: list[float], *, window_days: int, k: int = 5) -> tup
 
 
 def insert_article(
-    source_id: str, item: RawItem, url: str, url_hash: str, embedding: list[float],
+    source_id: str, item: RawItem, url: str, url_hash: str, embedding: list[float] | None,
     duplicate_of: str | None, duplicate_sim: float | None,
 ) -> str | None:
     """Returns the new id, or None if another worker inserted the same URL first."""
@@ -103,7 +103,7 @@ def insert_article(
             on conflict (url_hash) do nothing returning id
             """,
             (source_id, url, url_hash, item.title, item.summary, item.author, item.published_at,
-             np.asarray(embedding, dtype=np.float32), duplicate_of, duplicate_sim, item.engagement, Jsonb(item.metadata)),
+             None if embedding is None else np.asarray(embedding, dtype=np.float32), duplicate_of, duplicate_sim, item.engagement, Jsonb(item.metadata)),
         ).fetchone()
     return str(row["id"]) if row else None
 

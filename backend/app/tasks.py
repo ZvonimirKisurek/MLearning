@@ -43,3 +43,10 @@ def summarize_recent_articles_task(self) -> dict:
     from app.curriculum.summaries import summarize_pending
 
     return summarize_pending()
+
+
+@app.task(name="app.tasks.prune_old_data")
+def prune_old_data_task() -> dict:
+    from app.maintenance import prune
+
+    return prune()
