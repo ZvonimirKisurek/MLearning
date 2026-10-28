@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Completion, FeedPage, FeedQuery, Skill, Today } from "./types";
+import type { Completion, FeedPage, FeedQuery, Skill, SubmissionResult, TaskDetail, Today } from "./types";
 
 /**
  * Server-side client for the FastAPI backend.
@@ -22,13 +22,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, timeoutMs = 15_000): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
       ...init,
       cache: "no-store", // personal, live data: never serve a stale briefing or completion state
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { "Content-Type": "application/json", ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}), ...init.headers },
     });
   } catch {
@@ -45,6 +45,10 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const getToday = () => request<Today>("/api/today");
 export const getSkills = () => request<Skill[]>("/api/skills");
 export const completeTask = (id: string) => request<Completion>(`/api/tasks/${id}/complete`, { method: "POST" });
+export const getTask = (id: string) => request<TaskDetail>(`/api/tasks/${id}`);
+/** Grading is an LLM call that can take 10-60 s, so this one request gets a long timeout. */
+export const submitTask = (id: string, submission: string) =>
+  request<SubmissionResult>(`/api/tasks/${id}/submit`, { method: "POST", body: JSON.stringify({ submission }) }, 150_000);
 export const queueBriefing = () => request<{ queued: boolean; reason: string | null }>("/api/briefing/generate", { method: "POST" });
 
 export function getFeed(q: FeedQuery) {

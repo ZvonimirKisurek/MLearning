@@ -23,6 +23,7 @@ from app.ingestion.models import Category
 
 class ArticleRefOut(BaseModel):
     article_uuid: str
+    ref_id: str | None = Field(default=None, description="the [A7] id used in the text's citations")
     title: str
     url: str
     source: str

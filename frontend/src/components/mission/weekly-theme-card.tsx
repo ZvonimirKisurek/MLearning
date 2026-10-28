@@ -1,4 +1,5 @@
-import { CalendarDays, Compass } from "lucide-react";
+import { CalendarDays, ChevronDown, Compass, GraduationCap } from "lucide-react";
+import { Markdown } from "@/components/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { skillLabel } from "@/lib/skills";
@@ -23,6 +24,21 @@ export function WeeklyThemeCard({ weekly, today }: { weekly: WeeklyTheme; today:
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
         <p className="leading-relaxed text-muted-foreground">{t.rationale}</p>
+        {t.seminar_overview && (
+          <details className="group rounded-xl border border-white/[0.08] bg-white/[0.025]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
+              <span className="flex items-center gap-2"><GraduationCap className="size-4 text-violet" /> Read this week&apos;s seminar syllabus</span>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-white/[0.07] px-4 pb-4 pt-3"><Markdown compact>{t.seminar_overview}</Markdown></div>
+          </details>
+        )}
+        {t.core_questions?.length > 0 && (
+          <div>
+            <div className="eyebrow mb-1.5">Questions this week answers</div>
+            <ol className="list-decimal space-y-1 pl-5 marker:font-mono marker:text-violet">{t.core_questions.map((q) => <li key={q}>{q}</li>)}</ol>
+          </div>
+        )}
         <div className="flex flex-wrap gap-1.5">
           {t.focus_skills.map((s) => <Badge key={s} variant="violet">{skillLabel(s)}</Badge>)}
         </div>

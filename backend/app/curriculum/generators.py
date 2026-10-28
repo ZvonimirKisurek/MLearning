@@ -69,7 +69,7 @@ def _grounding(articles: list[RankedArticle], skills: list[Skill]) -> GroundingC
 
 def _article_ref(a: RankedArticle) -> dict:
     c = a.candidate
-    return {"article_uuid": c.id, "title": c.title, "url": c.url, "source": c.source_name, "category": c.category}
+    return {"article_uuid": c.id, "ref_id": a.short_id, "title": c.title, "url": c.url, "source": c.source_name, "category": c.category}  # ref_id = the [A7] the text cites
 
 
 def generate_weekly_theme(

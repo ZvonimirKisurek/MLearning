@@ -7,10 +7,12 @@ per MTok, gpt-4o-mini $0.15 / $0.60, text-embedding-3-small ~$0.02. gpt-4o has n
 
 | Item | Volume / week | Assumption | Cost |
 |---|---|---|---|
-| Daily + weekly generation (gpt-4o) | 8 calls | 11k in, ~1.7k out | ~$0.045 each => **~$0.36** |
+| Weekly seminar + daily plan (gpt-4o) | 8 calls | 11k in, ~1.7k out | ~$0.045 each => **~$0.36** |
+| Daily chapter (>=1500 words) + essay (gpt-4o) | 14 calls | ~3k in, ~3k out chapter; ~2k in, ~0.9k out essay | ~$0.04 + ~$0.015 => **~$0.8** |
+| Hands-on grading (gpt-4o) | ~1 per day, up to 6 per task | ~6k in, ~1k out | ~$0.025 each => **~$0.2 (cap: 6 attempts/task)** |
 | Summaries (gpt-4o-mini) | <= ~400/day | 10-article batches, ~2k in / ~1k out | <= $0.04/day => **<= $0.25** |
 | Embeddings | ~500 new items/day | ~120 tokens each | **~$0.01** |
-| **Typical total** | | | **about $0.6 per week (~$2.5/month)** |
+| **Typical total** | | | **about $1.6 per week (~$7/month)** |
 | Worst plausible (every generation needs 2 repairs) | | ~3x generation | ~$1.5 per week |
 
 The first day adds ~$0.02 (first ingest embeds ~1,500 items; 120 summaries). After day 1 run `python -m app.cli usage` for real numbers.

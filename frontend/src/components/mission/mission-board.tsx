@@ -1,36 +1,39 @@
 "use client";
 
+import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
-import { BookOpen, ChevronDown, Clock, Hammer, Lightbulb, PartyPopper, TriangleAlert } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, BookOpenText, ChevronDown, CircleCheck, Clock, FlaskConical, Lightbulb, Lock, PartyPopper, TriangleAlert } from "lucide-react";
 import { completeTaskAction } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { skillLabel } from "@/lib/skills";
 import type { Briefing, Task, TaskKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { HandsOnBody, InsightBody, ReadingBody } from "./task-bodies";
+import { GradedBadge, HandsOnSummary, InsightBody, ReadingSummary } from "./task-bodies";
 
-const META: Record<TaskKind, { label: string; icon: typeof BookOpen; tone: string }> = {
-  reading: { label: "Morning reading", icon: BookOpen, tone: "text-info" },
-  hands_on: { label: "Hands-on", icon: Hammer, tone: "text-primary" },
-  insight: { label: "Market insight", icon: Lightbulb, tone: "text-warn" },
+const META: Record<TaskKind, { label: string; icon: typeof BookOpenText; tone: string; glow: string }> = {
+  reading: { label: "Chapter", icon: BookOpenText, tone: "text-info", glow: "from-sky-400/20" },
+  hands_on: { label: "Hands-on lab", icon: FlaskConical, tone: "text-primary", glow: "from-emerald-400/20" },
+  insight: { label: "Market essay", icon: Lightbulb, tone: "text-warn", glow: "from-amber-400/20" },
 };
 
 const Difficulty = ({ n }: { n: number }) => (
   <span className="inline-flex items-center gap-0.5" title={`Difficulty ${n}/3`} aria-label={`Difficulty ${n} of 3`}>
-    {[1, 2, 3].map((i) => <span key={i} className={cn("size-1.5 rounded-full", i <= n ? "bg-foreground/70" : "bg-border")} />)}
+    {[1, 2, 3].map((i) => <span key={i} className={cn("size-1.5 rounded-full", i <= n ? "bg-foreground/70" : "bg-white/15")} />)}
   </span>
 );
 
 /**
- * Client Component: it owns interaction (optimistic checkbox state). The data arrives as props from a Server
- * Component, so the page's first paint contains the real tasks with no client-side fetch/spinner.
+ * Client Component: it owns interaction (optimistic ticks). Data arrives as props from a Server Component, so the first
+ * paint already contains the real tasks.
  *
- * Optimistic UI, step by step:
- *   1. User ticks a box -> inside a transition we call `markDone(id)`: React instantly renders the optimistic copy.
- *   2. The Server Action runs (API call -> DB transaction -> refresh()).
- *   3. When the transition ends React drops the optimistic layer and shows the real props, which by then are the
- *      refreshed server data. If the action failed, props are unchanged, so the tick visibly rolls back.
+ * Optimistic UI: ticking a box runs `markDone` inside a transition so React shows the ticked state instantly; the Server
+ * Action then does the real work and `refresh()`es the server data. If the action fails the props are unchanged, so the
+ * tick visibly rolls back.
+ *
+ * Hands-on labs are different on purpose: they have NO checkbox. They are completed only by a PASSING graded submission
+ * in the workspace, which is the only way that task can move your skill matrix.
  */
 export function MissionBoard({ briefing }: { briefing: Briefing }) {
   const [tasks, markDone] = useOptimistic(briefing.tasks, (current: Task[], id: string) =>
@@ -39,9 +42,9 @@ export function MissionBoard({ briefing }: { briefing: Briefing }) {
   const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [gain, setGain] = useState<Record<string, string>>({});
+  const [open, setOpen] = useState<string | null>(null);
 
   const done = tasks.filter((t) => t.completed).length;
-  const firstOpen = tasks.find((t) => !t.completed)?.id;
   const p = briefing.payload;
 
   function complete(task: Task) {
@@ -55,76 +58,88 @@ export function MissionBoard({ briefing }: { briefing: Briefing }) {
     });
   }
 
-  const title = (t: Task) =>
-    t.kind === "reading" ? p.morning_reading.title : t.kind === "hands_on" ? p.hands_on_task.title : p.market_insight.headline;
-  const minutes = (t: Task) =>
-    t.kind === "reading" ? p.morning_reading.estimated_minutes : t.kind === "hands_on" ? p.hands_on_task.estimated_minutes : null;
+  const title = (t: Task) => (t.kind === "reading" ? p.morning_reading.chapter_title : t.kind === "hands_on" ? p.hands_on_task.title : p.market_insight.headline);
+  const minutes = (t: Task) => (t.kind === "reading" ? p.morning_reading.estimated_minutes : t.kind === "hands_on" ? p.hands_on_task.estimated_minutes : null);
 
   return (
     <section aria-labelledby="mission-h">
-      <div className="mb-4 flex items-end justify-between">
-        <h2 id="mission-h" className="text-xl font-semibold tracking-tight">Today&apos;s Mission</h2>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <h2 id="mission-h" className="text-3xl font-semibold tracking-tight"><span className="gradient-text">Today&apos;s Mission</span></h2>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-muted-foreground">{done}/{tasks.length} complete</span>
-          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length}>
-            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(done / tasks.length) * 100}%` }} />
+          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length}>
+            <motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-sky-300" initial={false} animate={{ width: `${(done / tasks.length) * 100}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }} />
           </div>
         </div>
       </div>
 
       {error && (
-        <div role="alert" className="mb-3 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <div role="alert" className="mb-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           <TriangleAlert className="size-4" /> Couldn&apos;t save that: {error}
         </div>
       )}
 
-      <ul className="space-y-3">
+      <motion.ul className="space-y-4" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09 } } }}>
         {tasks.map((t) => {
           const m = META[t.kind];
           const Icon = m.icon;
           const min = minutes(t);
+          const isOpen = open === t.id;
           return (
-            <li key={t.id} className={cn("rounded-lg border bg-card transition-opacity", t.completed && "opacity-70")}>
-              <div className="flex items-start gap-3 p-4">
-                <Checkbox
-                  className="mt-0.5"
-                  checked={t.completed}
-                  disabled={t.completed} // completion is append-only (it moved your skill); there is deliberately no undo
-                  onCheckedChange={(v) => v === true && complete(t)}
-                  aria-label={`Mark "${title(t)}" complete`}
-                />
+            <motion.li key={t.id} variants={{ hidden: { opacity: 0, y: 18 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } }}
+              whileHover={{ y: -2 }} className={cn("glass glass-hover relative overflow-hidden rounded-2xl", t.completed && "opacity-75")}>
+              <div aria-hidden className={cn("pointer-events-none absolute -left-16 -top-16 size-48 rounded-full bg-gradient-to-br to-transparent blur-2xl", m.glow)} />
+              <div className="relative flex items-start gap-4 p-5">
+                {t.kind === "hands_on" ? (
+                  <span className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border", t.completed ? "border-primary bg-primary text-primary-foreground" : "border-input text-muted-foreground")}
+                    title={t.completed ? "Passed" : "Completed by passing the graded submission"}>
+                    {t.completed ? <CircleCheck className="size-3.5" strokeWidth={3} /> : <Lock className="size-3" />}
+                  </span>
+                ) : (
+                  <Checkbox className="mt-0.5" checked={t.completed} disabled={t.completed} onCheckedChange={(v) => v === true && complete(t)} aria-label={`Mark "${title(t)}" complete`} />
+                )}
                 <div className="min-w-0 flex-1">
-                  <div className={cn("mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest", m.tone)}>
-                    <Icon className="size-3.5" /> {m.label}
-                  </div>
-                  <p className={cn("font-medium leading-snug", t.completed && "line-through decoration-muted-foreground/50")}>{title(t)}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <div className={cn("eyebrow mb-1.5 flex items-center gap-1.5 !text-[11px]", m.tone)}><Icon className="size-3.5" /> {m.label}</div>
+                  <p className={cn("text-lg font-semibold leading-snug tracking-tight", t.completed && "text-muted-foreground")}>{title(t)}</p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{skillLabel(t.skill_slug)}</Badge>
                     {t.kind !== "insight" && <Difficulty n={t.difficulty} />}
                     {min && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="size-3" />{min} min</span>}
-                    {gain[t.id] && <Badge variant="primary">{gain[t.id]}</Badge>}
+                    {t.kind === "hands_on" && <GradedBadge />}
+                    {t.kind === "hands_on" && t.attempt_count > 0 && !t.completed && <Badge variant="warn">last score {t.evaluation_score}/10 · attempt {t.attempt_count}</Badge>}
+                    {(gain[t.id] || (t.completed && t.points_awarded)) && <Badge variant="primary">{gain[t.id] ?? `+${t.points_awarded?.toFixed(2)} ${skillLabel(t.skill_slug)}`}</Badge>}
                   </div>
                 </div>
+                {t.kind !== "insight" && (
+                  <Link href={t.kind === "reading" ? `/read/${t.id}` : `/practice/${t.id}`} className="mt-0.5 hidden shrink-0 items-center gap-1.5 rounded-lg bg-primary/15 px-3 py-1.5 text-sm font-medium text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/25 sm:inline-flex">
+                    {t.kind === "reading" ? (t.completed ? "Re-read" : "Read") : t.completed ? "Review" : t.attempt_count > 0 ? "Continue" : "Start lab"} <ArrowRight className="size-3.5" />
+                  </Link>
+                )}
+                <button onClick={() => setOpen(isOpen ? null : t.id)} aria-expanded={isOpen} aria-label={isOpen ? "Hide details" : "Show details"}
+                  className="mt-1 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground">
+                  <ChevronDown className={cn("size-5 transition-transform duration-300", isOpen && "rotate-180")} />
+                </button>
               </div>
-              <details open={t.id === firstOpen} className="group border-t">
-                <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2 text-xs text-muted-foreground hover:text-foreground">
-                  Details <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="px-4 pb-4 pt-1">
-                  {t.kind === "reading" && <ReadingBody r={p.morning_reading} />}
-                  {t.kind === "hands_on" && <HandsOnBody h={p.hands_on_task} />}
-                  {t.kind === "insight" && <InsightBody m={p.market_insight} />}
-                </div>
-              </details>
-            </li>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div key="body" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="relative overflow-hidden border-t border-white/[0.07]">
+                    <div className="px-5 pb-5 pt-4">
+                      {t.kind === "reading" && <ReadingSummary r={p.morning_reading} task={t} />}
+                      {t.kind === "hands_on" && <HandsOnSummary h={p.hands_on_task} task={t} />}
+                      {t.kind === "insight" && <InsightBody m={p.market_insight} />}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.li>
           );
         })}
-      </ul>
+      </motion.ul>
 
       {done === tasks.length && (
-        <p className="mt-4 flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
+        <motion.p initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="mt-5 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
           <PartyPopper className="size-4" /> Mission complete. See you tomorrow.
-        </p>
+        </motion.p>
       )}
     </section>
   );

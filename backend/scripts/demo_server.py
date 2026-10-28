@@ -73,6 +73,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--no-briefing", action="store_true", help="skip today's briefing to see the empty state")
+    ap.add_argument("--seed-skills", action="store_true", help="fake skill levels/history (default: everything starts at 0, as after the Phase 7 reset)")
     args = ap.parse_args()
 
     import pixeltable_pgserver as pgs
@@ -126,53 +127,55 @@ def main():
             with get_pool().connection() as conn:
                 conn.execute("update articles set ai_summary=%s, ai_summary_at=now() where id=%s", (ai, new_id))
 
+    sys.path.insert(0, str(ROOT / "backend"))  # tests.factories builds schema-valid payloads (prose, chapters, rubrics)
+    from tests import factories as F
+
     class DemoLLM:
-        """Stands in for the LLM: writes plausible, schema-valid content from the prompt it is given."""
+        """Stands in for the LLM: returns schema-valid content shaped like the real thing (offline, deterministic).
+
+        The grader is deliberately naive: it passes a submission iff it divides by the vector norms, so the
+        fail -> fix -> pass loop of the Hands-On workspace can be tried without an API key.
+        """
         def generate(self, *, system, user, output_model, grounding, **_):
-            arts = re.findall(r'<article id="(A\d+)"[^>]*related_skill="([^"]+)">\n<title>(.*?)</title>', user)
-            if output_model.__name__ == "WeeklyThemeOutput":
-                plan = [("Understand embeddings and cosine similarity", "vector-db", "normal"), ("Chunk documents and store vectors in pgvector", "rag", "normal"),
-                        ("Implement hybrid retrieval (BM25 + dense)", "rag", "stretch"), ("Write a PyTorch training loop for a tiny reranker", "pytorch", "normal"),
-                        ("Evaluate retrieval with recall@k and groundedness", "llm-evals", "normal"), ("Wire retrieval into a small FastAPI endpoint", "mlops", "light"),
-                        ("Review the week and write up what you learned", "rag", "light")]
-                d = {"title": "Build a retrieval pipeline on pgvector and measure it",
-                     "rationale": "Several engineering posts this week show teams moving retrieval into Postgres and measuring it properly. Your Postgres strength lets you move fast while closing the RAG, vector-DB and evaluation gaps.",
-                     "market_signals": ["pgvector keeps gaining features for filtered search", "Teams are adding retrieval-specific evals, not just answer quality", "Hybrid BM25 + dense retrieval is becoming the default"],
-                     "focus_skills": sorted(grounding.required_focus or {"rag", "vector-db"}),
-                     "learning_objectives": ["Explain cosine similarity and HNSW trade-offs", "Chunk and embed a corpus into pgvector", "Measure recall@k before and after hybrid search"],
-                     "key_article_ids": [a[0] for a in arts[:3]],
-                     "daily_plan": [{"day": i + 1, "focus": f, "skill_slug": s, "intensity": it, "reading_hint": "an engineering post on this topic", "build_hint": "a small, runnable script"} for i, (f, s, it) in enumerate(plan)]}
+            ids = sorted(grounding.article_ids, key=lambda x: (len(x), x))
+            name = output_model.__name__
+            if name == "WeeklyThemeOutput":
+                d = F.weekly_dict(ids, skills=tuple(sorted(grounding.required_focus or {"rag", "vector-db"})))
+            elif name == "DailyPlanOutput":
+                d = F.daily_dict(ids[0], skill="rag", evidence=ids[1:3] or [ids[0]])
+            elif name == "TaskEvaluationSchema":
+                good = "np.linalg.norm" in user or "norm(" in user
+                d = F.evaluation_dict(grounding.rubric.model_dump(), full=good)
             else:
-                rid, rskill, rtitle = arts[0]
-                d = {"morning_reading": {"article_id": rid, "skill_slug": rskill if rskill in grounding.skill_slugs else "rag", "difficulty": 2,
-                                         "why_it_matters": "Directly relevant to this week's retrieval theme and the trade-offs you will hit when you chunk your own documents.",
-                                         "guiding_questions": ["Which design choice drives most of the result?", "How would you measure it on your own data?", "What would you try differently?"], "estimated_minutes": 25},
-                     "hands_on_task": {"title": "Chunk a PDF and store the embeddings in pgvector", "skill_slug": "rag", "difficulty": 2,
-                                       "objective": "Split a PDF into overlapping chunks, embed them, and answer a query with a cosine-similarity SQL lookup.",
-                                       "prerequisites": ["Python 3.11", "Postgres with pgvector"],
-                                       "steps": ["Extract text from a PDF you care about", "Split into ~400-token chunks with 50-token overlap", "Embed each chunk and INSERT into a vector(1536) column", "Query the 5 nearest chunks with ORDER BY embedding <=> query", "Print the chunks and judge whether they answer the question"],
-                                       "deliverable": "chunk_and_search.py that prints the top-5 chunks for a query", "docs_to_consult": ["pypdf PdfReader", "pgvector HNSW index"], "estimated_minutes": 55,
-                                       "stretch_goal": "Add a BM25 score and fuse the two rankings with reciprocal rank fusion."},
-                     "market_insight": {"headline": "Postgres is becoming the default vector store for product teams", "body": "Multiple recent posts describe pgvector in production, and releases keep improving filtered search - the main reason teams used to reach for a dedicated vector database.",
-                                        "career_angle": "Your Postgres and Supabase experience transfers directly; retrieval engineering is a credible bridge into ML engineering roles.", "skill_slug": "vector-db", "evidence_article_ids": [a[0] for a in arts[1:3]] or [rid]}}
+                raise NotImplementedError(name)
             return output_model.model_validate(d, context=grounding)
+
+        def generate_text(self, *, system, user, check, purpose, **_):
+            found = sorted(set(re.findall(r"\bA\d+\b", user)), key=lambda x: (len(x), x))[:2] or ["A1"]
+            text = F.chapter_text(1900, cites=found) if purpose == "Chapter" else F.essay_text(560, cites=found)
+            problems = check(text)
+            assert not problems, problems
+            return text
 
     s = Settings(timezone="UTC", min_candidates=5)
     if not args.no_briefing:
         generators.generate_daily_briefing(llm=DemoLLM(), embedder=None, settings=s)
-    # history so the skill chart has something to show
+    # optional fake history; by default skills start at 0 like a fresh learner
     with get_pool().connection() as conn:
-        for slug, lvl in {"pytorch": 24.5, "classical-ml": 31, "rag": 33.2, "vector-db": 41.8, "llm-finetuning": 12.4, "mlops": 33, "llm-evals": 19.1}.items():
+        for slug, lvl in ({} if not args.seed_skills else {"pytorch": 24.5, "classical-ml": 31, "rag": 33.2, "vector-db": 41.8, "llm-finetuning": 12.4, "mlops": 33, "llm-evals": 19.1}).items():
             conn.execute("update skills set level=%s where slug=%s", (lvl, slug))
             for d in (6, 4, 2):
                 conn.execute("insert into skill_history (skill_id, level, delta, recorded_at) select id, %s, 0.6, now() - %s * interval '1 day' from skills where slug=%s", (lvl - d * 0.3, d, slug))
 
     import uvicorn
+    from app.api import deps
     from app.main import create_app
 
     print(f"\nDEMO API ready on http://localhost:{args.port}  (docs at /docs)  - Ctrl+C to stop\n", flush=True)
     try:
-        uvicorn.run(create_app(), host="127.0.0.1", port=args.port, log_level="warning")
+        app = create_app()
+        app.dependency_overrides[deps.get_llm] = lambda: DemoLLM()  # demo grading, no OpenAI
+        uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
     finally:
         server.cleanup()
 

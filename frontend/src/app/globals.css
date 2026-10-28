@@ -1,27 +1,28 @@
 @import "tailwindcss";
 
-/* Dark-first developer-tool palette. Tokens use shadcn/ui's names so `npx shadcn add <component>` output
-   drops in unchanged. The app is dark only (color-scheme: dark); add a .light block to support both. */
+/* Premium dark-first design system.
+   Tailwind v4 is CSS-first: what used to live in tailwind.config.js (colours, fonts, radii) is declared below in @theme.
+   Surfaces are "glass": translucent fills + backdrop blur + a hairline border over a soft aurora background. */
 :root {
   color-scheme: dark;
-  --background: #0a0b0e;
-  --foreground: #e6e8ec;
-  --card: #101216;
-  --card-foreground: #e6e8ec;
-  --muted: #161a20;
-  --muted-foreground: #8b92a0;
-  --border: #1f232b;
-  --input: #2a2f39;
+  --background: #07080c;
+  --foreground: #e8eaf0;
+  --card: rgb(255 255 255 / 0.035);
+  --card-foreground: #e8eaf0;
+  --muted: rgb(255 255 255 / 0.05);
+  --muted-foreground: #8d94a5;
+  --border: rgb(255 255 255 / 0.09);
+  --input: rgb(255 255 255 / 0.14);
   --primary: #34d399;
   --primary-foreground: #04130c;
-  --accent: #1a1f27;
-  --accent-foreground: #e6e8ec;
+  --accent: rgb(255 255 255 / 0.07);
+  --accent-foreground: #e8eaf0;
   --destructive: #f87171;
   --info: #60a5fa;
   --warn: #fbbf24;
   --violet: #a78bfa;
   --ring: #34d399;
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 }
 
 @theme inline {
@@ -42,16 +43,93 @@
   --color-warn: var(--warn);
   --color-violet: var(--violet);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-sm: calc(var(--radius) - 6px);
 }
 
 @layer base {
   * { border-color: var(--border); }
-  body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
-  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-  ::selection { background: color-mix(in oklab, var(--primary) 30%, transparent); }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01"; /* Inter: single-storey a, straight-sided numerals */
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  /* Aurora: two soft radial glows and a faint grid that fades out toward the bottom. Pure CSS, no images. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(52 211 153 / 0.14), transparent 60%),
+      radial-gradient(50rem 36rem at 92% -5%, rgb(96 165 250 / 0.12), transparent 60%),
+      radial-gradient(40rem 30rem at 50% 110%, rgb(167 139 250 / 0.08), transparent 60%);
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 70%);
+  }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: rgb(52 211 153 / 0.3); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.12); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 }
+
+@layer components {
+  .glass {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.02));
+    border: 1px solid var(--border);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 20px 50px -24px rgb(0 0 0 / 0.7);
+  }
+  .glass-hover { transition: border-color .2s, box-shadow .2s, transform .2s; }
+  .glass-hover:hover { border-color: rgb(255 255 255 / 0.18); box-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 24px 60px -22px rgb(52 211 153 / 0.16); }
+  .gradient-text { background: linear-gradient(90deg, #6ee7b7, #99f6e4 45%, #93c5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-foreground); }
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Textbook typography for rendered markdown (chapters, essays, syllabus, grader feedback).
+   --------------------------------------------------------------------------------------------- */
+.prose-book { font-size: 1.0625rem; line-height: 1.8; color: #d9dce6; max-width: 72ch; }
+.prose-book > * + * { margin-top: 1.1em; }
+.prose-book h2 { font-size: 1.6rem; line-height: 1.25; font-weight: 650; letter-spacing: -0.02em; color: #fff; margin-top: 2.6em; padding-top: 0.6em; border-top: 1px solid var(--border); }
+.prose-book h2:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.prose-book h3 { font-size: 1.2rem; font-weight: 620; color: #f3f4f8; margin-top: 1.9em; letter-spacing: -0.01em; }
+.prose-book h4 { font-size: 1.02rem; font-weight: 600; color: #f3f4f8; margin-top: 1.5em; }
+.prose-book p { text-wrap: pretty; }
+.prose-book strong { color: #fff; font-weight: 620; }
+.prose-book em { color: #eceff6; }
+.prose-book a { color: var(--info); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(96 165 250 / 0.4); }
+.prose-book ul, .prose-book ol { padding-left: 1.5em; }
+.prose-book ul { list-style: disc; } .prose-book ol { list-style: decimal; }
+.prose-book li { margin-top: .45em; padding-left: .2em; } .prose-book li::marker { color: var(--muted-foreground); }
+.prose-book blockquote { border-left: 3px solid var(--primary); background: rgb(52 211 153 / 0.06); padding: .7em 1.1em; border-radius: 0 10px 10px 0; color: #cfe9df; }
+.prose-book hr { border: 0; border-top: 1px solid var(--border); margin: 2.2em 0; }
+.prose-book table { width: 100%; border-collapse: collapse; font-size: .95em; display: block; overflow-x: auto; }
+.prose-book th { text-align: left; font-weight: 600; color: #fff; background: var(--muted); }
+.prose-book th, .prose-book td { padding: .55em .8em; border: 1px solid var(--border); }
+.prose-book :not(pre) > code { font-family: var(--font-mono); font-size: .86em; background: rgb(255 255 255 / 0.08); border: 1px solid var(--border); padding: .12em .42em; border-radius: 6px; color: #c7f9e4; }
+.prose-book .katex-display { overflow-x: auto; overflow-y: hidden; padding: .6em 0; }
+.prose-book .katex { font-size: 1.08em; }
+.prose-sm-book { font-size: .95rem; line-height: 1.7; max-width: none; }
+.prose-sm-book h2 { font-size: 1.15rem; margin-top: 1.6em; } .prose-sm-book h3 { font-size: 1rem; margin-top: 1.3em; }
+
+/* Code blocks: highlight.js "github-dark" colours (imported in the layout) on our own surface. */
+.code-block { position: relative; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #0b0d12; }
+.code-block pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--font-mono); font-size: .86rem; line-height: 1.65; }
+.code-block pre code { background: none !important; padding: 0 !important; border: 0 !important; font-family: inherit; color: #e6edf3; }
+.code-block .hljs { background: transparent !important; padding: 0 !important; }

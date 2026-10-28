@@ -100,3 +100,21 @@ Edit a skill's description (the retrieval "query"): `update skills set descripti
 Set `ROADMAP_START=<the Monday you begin>` in `.env`. From then on `generate-weekly` follows `backend/curriculum/roadmap.yaml`
 (4 weeks), and the news only picks timely readings. After week 4 it returns to free mode. To restart, change the date.
 Edit the YAML to change the plan (skills must be existing slugs).
+
+
+## Phase 7 upgrade: deep-learning mode (migration 0006)
+
+Migration `20261028000006_deep_learning_mode.sql` is **destructive on purpose**: it resets every skill to level 0 and deletes
+`skill_history`, `daily_briefings`, `weekly_themes` (old briefings have no chapters/rubrics). Existing database:
+
+```bash
+docker compose exec -T db psql -U postgres mlesprint < supabase/migrations/20261028000006_deep_learning_mode.sql
+python -m app.cli generate-weekly --force && python -m app.cli generate-daily --force
+```
+
+- Reading chapters (>=1500 words) are generated in a second/third LLM call per day, so generation takes ~1-2 minutes.
+- Hands-on tasks are **not tick-able**: they complete only when `POST /api/tasks/{id}/submit` returns `passed` (max 6 attempts/task).
+  Grading is an AI code review of the pasted code + output; it does not execute anything.
+- Grading calls take 10-60 s: on Vercel Hobby (10 s function limit) set `maxDuration` on the route or use a Pro plan.
+- Try the whole UI offline: `python backend/scripts/demo_server.py` (fake LLM; submissions pass iff they use `np.linalg.norm`).
+- `python -m app.cli reset-progress --yes` resets skills/history/submissions again.

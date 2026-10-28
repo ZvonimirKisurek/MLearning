@@ -1,8 +1,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export const Card = ({ className, ...p }: React.ComponentProps<"div">) => (
-  <div className={cn("rounded-lg border bg-card text-card-foreground", className)} {...p} />
+/** Glass surface (see .glass in globals.css). Pass `interactive` for the hover glow. */
+export const Card = ({ className, interactive, ...p }: React.ComponentProps<"div"> & { interactive?: boolean }) => (
+  <div className={cn("glass rounded-2xl text-card-foreground", interactive && "glass-hover", className)} {...p} />
 );
 export const CardHeader = ({ className, ...p }: React.ComponentProps<"div">) => <div className={cn("flex flex-col gap-1 p-5 pb-3", className)} {...p} />;
 export const CardTitle = ({ className, ...p }: React.ComponentProps<"h2">) => <h2 className={cn("text-sm font-semibold tracking-tight", className)} {...p} />;
