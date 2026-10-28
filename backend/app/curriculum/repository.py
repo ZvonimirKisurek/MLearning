@@ -83,8 +83,10 @@ def save_briefing(day: date, theme_id: str, payload: dict, tasks: list[dict], re
         ).fetchone()["id"]
         for t in tasks:
             conn.execute(
-                "insert into daily_tasks (briefing_id, kind, skill_slug, difficulty, title) values (%s,%s,%s,%s,%s)",
-                (bid, t["kind"], t["skill_slug"], t["difficulty"], t["title"]),
+                """insert into daily_tasks (briefing_id, kind, skill_slug, difficulty, title, reading_content, evaluation_rubric)
+                   values (%s,%s,%s,%s,%s,%s,%s)""",
+                (bid, t["kind"], t["skill_slug"], t["difficulty"], t["title"], t.get("reading_content"),
+                 Jsonb(t["evaluation_rubric"]) if t.get("evaluation_rubric") else None),
             )
     return str(bid)
 
@@ -93,7 +95,8 @@ def used_reading_ids(days: int = 30) -> set[str]:
     since = date.today() - timedelta(days=days)
     with get_pool().connection() as conn:
         rows = conn.execute(
-            "select payload->'morning_reading'->>'article_uuid' as aid from daily_briefings where day >= %s", (since,)
+            """select jsonb_path_query(payload, '$.morning_reading.inspiration[*].article_uuid') #>> '{}' as aid
+               from daily_briefings where day >= %s""", (since,)
         ).fetchall()
     return {r["aid"] for r in rows if r["aid"]}
 

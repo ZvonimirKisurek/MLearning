@@ -1,5 +1,6 @@
 """Runs the real SQL against Postgres 16 + pgvector 0.8: migrations, Phase 1 dedup lookups, Phase 2 engine."""
 import json
+import re
 from datetime import date, datetime, timedelta, timezone
 
 import numpy as np
@@ -10,7 +11,7 @@ from app.config import Settings
 from app.curriculum import generators, repository as crepo
 from app.ingestion import repository as irepo
 from app.ingestion.models import RawItem, SourceSpec
-from tests.factories import daily_dict, unit_vec, weekly_dict
+from tests.factories import chapter_text, daily_dict, essay_text, evaluation_dict, unit_vec, weekly_dict
 
 rng = np.random.default_rng(1)
 pytestmark = pytest.mark.integration
@@ -36,14 +37,26 @@ class FakeEmbedder:
 
 
 class FakeLLM:
-    """Builds a valid output from the grounding ids it is given - stands in for the LLM."""
+    """Stands in for the LLM: builds valid output from the grounding/prompt it is given, and VERIFIES text against `check`."""
     def generate(self, *, system, user, output_model, grounding, **kw):
         ids = sorted(grounding.article_ids, key=lambda x: int(x[1:]))
-        if output_model.__name__ == "WeeklyThemeOutput":
+        name = output_model.__name__
+        if name == "WeeklyThemeOutput":
             d = weekly_dict(ids, skills=("rag", "vector-db"))
-        else:
+        elif name == "DailyPlanOutput":
             d = daily_dict(ids[0], skill="rag", evidence=ids[:2])
+        elif name == "TaskEvaluationSchema":
+            d = evaluation_dict(grounding.rubric.model_dump(), full="FAILME" not in user)
+        else:
+            raise AssertionError(f"unexpected model {name}")
         return output_model.model_validate(d, context=grounding)
+
+    def generate_text(self, *, system, user, check, purpose, **kw):
+        ids = re.findall(r'<article id="(A\d+)"', user)
+        text = chapter_text(cites=ids[:2]) if purpose == "Chapter" else essay_text(cites=ids[:2])
+        problems = check(text)
+        assert not problems, problems
+        return text
 
 
 def test_migrations_applied(db):
@@ -82,16 +95,22 @@ def test_weekly_then_daily_end_to_end(db):
     assert generators.generate_weekly_theme(week_start=date(2026, 10, 26), llm=FakeLLM(), embedder=FakeEmbedder(), settings=s)["cached"]
 
     d = generators.generate_daily_briefing(day=day, llm=FakeLLM(), embedder=FakeEmbedder(), settings=s)
-    assert not d["cached"] and d["payload"]["morning_reading"]["url"].startswith("https://s.test/")
+    assert not d["cached"] and d["payload"]["morning_reading"]["inspiration"][0]["url"].startswith("https://s.test/")
+    assert d["payload"]["morning_reading"]["word_count"] >= 1500 and d["payload"]["market_insight"]["word_count"] >= 450
     assert generators.generate_daily_briefing(day=day, llm=FakeLLM(), embedder=FakeEmbedder(), settings=s)["cached"]
     with psycopg.connect(db) as conn:
         assert conn.execute("select count(*) from daily_tasks").fetchone()[0] == 3
+        row = conn.execute("select length(reading_content) from daily_tasks where kind='reading'").fetchone()
+        assert row[0] > 8000                                                     # the chapter is stored on the reading task
+        rub = conn.execute("select evaluation_rubric from daily_tasks where kind='hands_on'").fetchone()[0]
+        assert rub["pass_score"] == 6 and len(rub["criteria"]) == 3             # the rubric is stored on the hands-on task
+        assert conn.execute("select count(*) from daily_tasks where kind='insight' and reading_content is null and evaluation_rubric is null").fetchone()[0] == 1
         assert conn.execute("select count(*) from skills where embedding is not null").fetchone()[0] == 7
 
     # next day must not reuse yesterday's reading
     used = crepo.used_reading_ids()
     d2 = generators.generate_daily_briefing(day=date(2026, 10, 29), llm=FakeLLM(), embedder=FakeEmbedder(), settings=s)
-    assert d2["payload"]["morning_reading"]["article_uuid"] not in used
+    assert d2["payload"]["morning_reading"]["inspiration"][0]["article_uuid"] not in used
 
 
 def test_daily_self_heals_missing_weekly_theme_and_dry_run_prints_prompt(db):

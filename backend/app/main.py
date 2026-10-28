@@ -21,6 +21,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.pool = pool
         yield
         await pool.close()
+        from app.db import close_pool  # the sync pool used by the grader's usage ledger (opened lazily)
+
+        close_pool()
 
     app = FastAPI(title="MLE-Sprint API", version="0.1.0", lifespan=lifespan,
                   docs_url="/docs" if settings.enable_docs else None, redoc_url="/redoc" if settings.enable_docs else None,

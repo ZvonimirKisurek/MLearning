@@ -51,6 +51,8 @@ def main() -> int:
     sub.add_parser("retro", help="weekly retrospective: completion, click-through signals, skill movement")
     exp = sub.add_parser("export-progress", help="dump skills/history/briefings/tasks to JSON (backup)")
     exp.add_argument("--out", default="progress_export.json")
+    rst = sub.add_parser("reset-progress", help="set every skill to 0 and clear skill history (destructive)")
+    rst.add_argument("--yes", action="store_true", help="required: confirm the reset")
     sub.add_parser("prune", help="delete old articles/duplicates (retention)")
     emb = sub.add_parser("embed-skills", help="(re)compute skill embeddings after editing skills.description")
     emb.add_argument("--force", action="store_true", help="recompute all, not just missing")
@@ -88,6 +90,17 @@ def main() -> int:
         from app import retro
 
         print(retro.export_progress(args.out), "->", args.out)
+        return 0
+    if args.cmd == "reset-progress":
+        if not args.yes:
+            print("this sets every skill level to 0 and deletes skill_history. Re-run with --yes to confirm.")
+            return 2
+        from app.db import get_pool
+
+        with get_pool().connection() as conn:
+            n = conn.execute("update skills set level = 0, updated_at = now()").rowcount
+            h = conn.execute("delete from skill_history").rowcount
+        print(f"{n} skills reset to 0; {h} history rows deleted")
         return 0
     if args.cmd == "prune":
         from app.maintenance import prune

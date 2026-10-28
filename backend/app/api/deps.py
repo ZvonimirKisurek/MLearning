@@ -61,6 +61,7 @@ async def get_conn(pool: Annotated[AsyncConnectionPool, Depends(get_pool)]) -> A
 # client could receive "200 OK" and immediately read data that is not committed yet (read-after-write race).
 Conn = Annotated[AsyncConnection, Depends(get_conn, scope="function")]
 Cfg = Annotated[Settings, Depends(settings_dep)]
+Pool = Annotated[AsyncConnectionPool, Depends(get_pool)]
 
 
 async def require_token(settings: Cfg, authorization: Annotated[str | None, Header()] = None) -> None:
@@ -111,6 +112,13 @@ def _enqueue_celery(task_name: str) -> None:
     with celery.connection_for_write() as conn:
         conn.ensure_connection(max_retries=1, interval_start=0, interval_step=0.2, timeout=2)
     celery.send_task(task_name, retry=False)
+
+
+def get_llm(settings: Cfg):
+    """The grader. A dependency so tests and the demo server can substitute a fake without touching OpenAI."""
+    from app.curriculum.llm import StructuredLLM
+
+    return StructuredLLM(settings)
 
 
 def get_enqueue(settings: Cfg) -> Callable[[str], None]:

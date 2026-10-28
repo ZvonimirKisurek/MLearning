@@ -17,7 +17,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.curriculum.schemas import HandsOnTask, MarketInsight, MorningReading, WeeklyThemeOutput
+from app.curriculum.schemas import HandsOnTask, TaskEvaluationSchema, WeeklyThemeOutput
 from app.ingestion.models import Category
 
 
@@ -29,10 +29,23 @@ class ArticleRefOut(BaseModel):
     category: str
 
 
-class ReadingOut(MorningReading, ArticleRefOut): ...
+class ReadingOut(BaseModel):
+    chapter_title: str
+    skill_slug: str
+    difficulty: int
+    learning_goals: list[str]
+    estimated_minutes: int
+    word_count: int
+    section_headings: list[str]
+    inspiration: list[ArticleRefOut]
 
 
-class InsightOut(MarketInsight):
+class InsightOut(BaseModel):
+    headline: str
+    thesis: str
+    skill_slug: str
+    body: str = Field(description="the ~500-word analytical essay, markdown")
+    word_count: int
     evidence: list[ArticleRefOut]
 
 
@@ -52,6 +65,10 @@ class TaskOut(BaseModel):
     completed: bool
     completed_at: datetime | None
     points_awarded: float | None
+    attempt_count: int = 0
+    evaluation_score: int | None = None
+    evaluation_passed: bool | None = None
+    has_content: bool = False
 
 
 class BriefingOut(BaseModel):
@@ -149,3 +166,33 @@ class FeedPage(BaseModel):
 class QueueOut(BaseModel):
     queued: bool
     reason: str | None = None
+
+
+class ReadingDetail(ReadingOut):
+    content: str | None = Field(description="the full chapter, markdown with LaTeX and fenced code")
+
+
+class TaskDetailOut(BaseModel):
+    task: TaskOut
+    day: date
+    reading: ReadingDetail | None
+    hands_on: HandsOnTask | None
+    insight: InsightOut | None
+    submission: str | None = Field(description="the learner's latest submission")
+    evaluation: TaskEvaluationSchema | None = Field(description="the latest graded result")
+    attempts_used: int
+    attempts_max: int
+
+
+class SubmissionIn(BaseModel):
+    submission: str = Field(min_length=20, max_length=20000, description="your code AND the terminal output of running it")
+
+
+class SubmissionOut(BaseModel):
+    task: TaskOut
+    evaluation: TaskEvaluationSchema
+    passed: bool
+    skill: SkillDelta | None = Field(description="set only when the submission passed and moved a skill")
+    briefing_completed: bool
+    attempts_used: int
+    attempts_max: int

@@ -12,7 +12,7 @@ from app.api.deps import require_token
 from app.config import Settings, get_settings
 from app.curriculum import usage
 from app.curriculum.errors import LLMBudgetExceeded
-from app.curriculum.schemas import DailyBriefingOutput, GroundingContext
+from app.curriculum.schemas import DailyPlanOutput, GroundingContext
 from app.curriculum.summaries import summarize_pending
 from app.main import create_app
 from tests.factories import daily_dict
@@ -75,14 +75,14 @@ CTX = GroundingContext(frozenset({"A1", "A2"}), frozenset({"rag", "vector-db", "
 def test_every_call_is_recorded_and_the_cap_refuses_before_spending(db):
     s = dict(llm_daily_budget_usd=0.10)
     llm, sent = llm_with_transport(s)
-    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # gpt-4o: 10k in * $2.5/M + 5k out * $10/M = $0.075
+    llm.generate(system="s", user="u", output_model=DailyPlanOutput, grounding=CTX)   # gpt-4o: 10k in * $2.5/M + 5k out * $10/M = $0.075
     assert usage.spent_last_24h() == pytest.approx(0.075, abs=1e-4)
-    llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)   # allowed (0.075 < 0.10), now $0.15
+    llm.generate(system="s", user="u", output_model=DailyPlanOutput, grounding=CTX)   # allowed (0.075 < 0.10), now $0.15
     assert len(sent) == 2
     with pytest.raises(LLMBudgetExceeded, match="cap is \\$0.10"):
-        llm.generate(system="s", user="u", output_model=DailyBriefingOutput, grounding=CTX)
+        llm.generate(system="s", user="u", output_model=DailyPlanOutput, grounding=CTX)
     assert len(sent) == 2, "the refused call must never reach the API"
-    assert "DailyBriefingOutput" in usage.usage_report() and "$0.150" in usage.usage_report()
+    assert "DailyPlanOutput" in usage.usage_report() and "$0.150" in usage.usage_report()
 
 
 @pytest.mark.integration

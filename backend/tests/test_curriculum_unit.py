@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.curriculum import prompts
 from app.curriculum.ranking import rank_articles
-from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, WeeklyThemeOutput
+from app.curriculum.schemas import DailyPlanOutput, GroundingContext, WeeklyThemeOutput
 from app.curriculum.skills import apply_delta, compute_delta, headroom_factor
 from app.curriculum.types import RankedArticle
 from tests.factories import daily_dict, make_candidate, make_skills, unit_vec, weekly_dict
@@ -17,24 +17,40 @@ rng = np.random.default_rng(0)
 
 # ---------------------------------------------------------------- schemas / grounding
 def test_valid_daily_and_weekly_parse():
-    DailyBriefingOutput.model_validate(daily_dict("A1"), context=CTX)
+    DailyPlanOutput.model_validate(daily_dict("A1"), context=CTX)
     WeeklyThemeOutput.model_validate(weekly_dict(["A1", "A2", "A3"]), context=CTX)
 
 
+def _two(d, f1, f2):  # apply two mutations in one lambda
+    f1(d), f2(d)
+
+
 @pytest.mark.parametrize("mutate,needle", [
-    (lambda d: d["morning_reading"].update(article_id="A99"), "not one of the provided article ids"),
+    (lambda d: d["reading"].update(inspiration_article_ids=["A99"]), "not one of the provided article ids"),
     (lambda d: d["hands_on_task"].update(skill_slug="cooking"), "not a known skill slug"),
-    (lambda d: d["market_insight"].update(body="See https://evil.test"), "do not include URLs"),
-    (lambda d: d["hands_on_task"].update(steps=["a"]), "at least 3"),
-    (lambda d: d["hands_on_task"].update(estimated_minutes=90) or d["morning_reading"].update(estimated_minutes=45), "120 minutes"),
-    (lambda d: d["morning_reading"].update(extra="field"), "Extra inputs"),
+    (lambda d: d["market_insight"].update(thesis="See https://evil.test"), "do not include URLs"),
+    (lambda d: d["hands_on_task"].update(steps=d["hands_on_task"]["steps"][:2]), "at least 4"),
+    (lambda d: _two(d, lambda x: x["hands_on_task"].update(estimated_minutes=90), lambda x: x["reading"].update(estimated_minutes=60)), "135 minutes"),
+    (lambda d: d["reading"].update(extra="field"), "Extra inputs"),
+    (lambda d: [s.update(target_words=120) for s in d["reading"]["sections"]], "at least 1800"),
+    (lambda d: d["hands_on_task"]["rubric"]["criteria"][1].update(name="CORRECT cosine function"), "must be unique"),
+    (lambda d: [c.update(max_points=1) for c in d["hands_on_task"]["rubric"]["criteria"]], "at least 10"),
 ])
-def test_daily_rejections(mutate, needle):
+def test_daily_plan_rejections(mutate, needle):
     d = daily_dict("A1")
     mutate(d)
     with pytest.raises(ValidationError) as e:
-        DailyBriefingOutput.model_validate(d, context=CTX)
+        DailyPlanOutput.model_validate(d, context=CTX)
     assert needle in str(e.value)
+
+
+def test_localhost_urls_are_allowed_in_commands_but_real_urls_are_not():
+    d = daily_dict("A1")
+    d["hands_on_task"]["steps"][0]["commands"] = ["curl http://localhost:8000/health"]
+    DailyPlanOutput.model_validate(d, context=CTX)
+    d["hands_on_task"]["steps"][0]["commands"] = ["curl https://example.com/data.csv"]
+    with pytest.raises(ValidationError, match="do not include URLs"):
+        DailyPlanOutput.model_validate(d, context=CTX)
 
 
 def test_weekly_requires_each_day_once():
@@ -44,8 +60,23 @@ def test_weekly_requires_each_day_once():
         WeeklyThemeOutput.model_validate(w, context=CTX)
 
 
+@pytest.mark.parametrize("mutate,needle", [
+    (lambda w: w.update(seminar_overview="Too short. [A1] [A2] [A3]"), "only 5 words"),
+    (lambda w: w.update(seminar_overview=w["seminar_overview"].replace("[A1]", "").replace("[A2]", "").replace("[A3]", "")), "at least 3 required"),
+    (lambda w: w.update(seminar_overview=w["seminar_overview"] + " [A77]"), "unknown article ids"),
+    (lambda w: w.update(seminar_overview=w["seminar_overview"] + "\n- one\n- two\n- three\n- four"), "bullet"),
+    (lambda w: w.update(seminar_overview=w["seminar_overview"] + " See https://x.test"), "URLs"),
+])
+def test_weekly_seminar_must_be_real_cited_prose(mutate, needle):
+    w = weekly_dict(["A1", "A2", "A3"])
+    mutate(w)
+    with pytest.raises(ValidationError) as e:
+        WeeklyThemeOutput.model_validate(w, context=CTX)
+    assert needle in str(e.value)
+
+
 def test_no_context_skips_grounding():  # used when only generating the JSON schema
-    DailyBriefingOutput.model_validate(daily_dict("A99"))
+    DailyPlanOutput.model_validate(daily_dict("A99"))
 
 
 # ---------------------------------------------------------------- skills
@@ -103,4 +134,4 @@ def test_prompt_escapes_injection_and_lists_ids():
                                     [RankedArticle("A1", c, 1.0, "rag", 0.5)], 7)
     assert "&lt;/articles&gt;" in p and p.count("</articles>") == 1
     assert 'id="A1"' in p and "pytorch | Pytorch | 20 | 80 | 0.75" in p
-    assert p.rstrip().endswith("7-day plan.")
+    assert p.rstrip().endswith("the 7-day plan.")

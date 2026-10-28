@@ -10,14 +10,15 @@ accidental double-fires never create duplicates or burn tokens. `force=True` reg
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.config import Settings, get_settings
-from app.curriculum import prompts, repository, roadmap as roadmap_mod
+from app.curriculum import content_checks as cc, prompts, repository, roadmap as roadmap_mod
 from app.curriculum.llm import StructuredLLM
 from app.curriculum.ranking import rank_articles
-from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, WeeklyThemeOutput
+from app.curriculum.schemas import DailyPlanOutput, GroundingContext, WeeklyThemeOutput
 from app.curriculum.types import RankedArticle, Skill
 
 log = logging.getLogger(__name__)
@@ -132,26 +133,63 @@ def generate_daily_briefing(
     skills = ensure_skill_embeddings(repo.load_skills(), embedder, repo, settings)
     articles = _select(skills, settings, repo, exclude=repo.used_reading_ids(),
                        boost={plan_entry["skill_slug"]: 1.3})  # bias retrieval toward today's skill
-    user = prompts.build_daily_prompt(day, theme, plan_entry, skills, articles, repo.recent_work(day), settings.candidate_window_days)
-    if dry_run:
-        return {"system": prompts.DAILY_SYSTEM, "user": user, "articles": len(articles)}
+    user = prompts.build_daily_plan_prompt(day, theme, plan_entry, skills, articles, repo.recent_work(day), settings.candidate_window_days)
+    if dry_run:  # prints stage 1 (the plan); stages 2-3 are written from the plan's output
+        return {"system": prompts.DAILY_PLAN_SYSTEM, "user": user, "articles": len(articles)}
 
-    out = (llm or StructuredLLM(settings)).generate(
-        system=prompts.DAILY_SYSTEM, user=user, output_model=DailyBriefingOutput, grounding=_grounding(articles, skills),
-        temperature=settings.temp_daily)
+    llm = llm or StructuredLLM(settings)
     by_id = {a.short_id: a for a in articles}
-    payload = out.model_dump()
-    payload["morning_reading"].update(_article_ref(by_id[out.morning_reading.article_id]))
-    payload["market_insight"]["evidence"] = [_article_ref(by_id[i]) for i in out.market_insight.evidence_article_ids]
+    window = settings.candidate_window_days
+
+    # Stage 1 - PLAN (structured): chapter outline, hands-on project with rubric, essay thesis.
+    plan = llm.generate(system=prompts.DAILY_PLAN_SYSTEM, user=user, output_model=DailyPlanOutput,
+                        grounding=_grounding(articles, skills), temperature=settings.temp_daily)
+    reading, hands_on, insight = plan.reading, plan.hands_on_task, plan.market_insight
+    inspiration = [by_id[i] for i in reading.inspiration_article_ids]
+    evidence = [by_id[i] for i in insight.evidence_article_ids]
+    chapter_ids = frozenset(a.short_id for a in inspiration)  # the chapter may cite only the articles it was shown
+    essay_ids = frozenset(a.short_id for a in evidence)
+
+    # Stages 2 and 3 are independent given the plan, so they run concurrently (halves the latency).
+    def write_chapter() -> str:
+        return llm.generate_text(
+            system=prompts.CHAPTER_SYSTEM, user=prompts.build_chapter_prompt(reading.model_dump(), theme, plan_entry, inspiration, window),
+            check=lambda t: cc.check_chapter(t, min_words=settings.chapter_min_words, article_ids=chapter_ids),
+            purpose="Chapter", temperature=settings.temp_chapter)
+
+    def write_essay() -> str:
+        return llm.generate_text(
+            system=prompts.INSIGHT_SYSTEM, user=prompts.build_insight_prompt(insight.model_dump(), evidence, window),
+            check=lambda t: cc.check_essay(t, min_words=settings.essay_min_words, max_words=settings.essay_max_words, article_ids=essay_ids),
+            purpose="Essay", temperature=settings.temp_chapter, max_tokens=settings.llm_max_tokens)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        chapter_f, essay_f = pool.submit(write_chapter), pool.submit(write_essay)
+        chapter, essay = chapter_f.result(), essay_f.result()
+
+    payload = {
+        "morning_reading": {
+            "chapter_title": reading.chapter_title, "skill_slug": reading.skill_slug, "difficulty": reading.difficulty,
+            "learning_goals": reading.learning_goals, "estimated_minutes": reading.estimated_minutes,
+            "word_count": cc.count_words(chapter), "section_headings": [s.heading for s in reading.sections],
+            "inspiration": [_article_ref(a) for a in inspiration],
+        },
+        "hands_on_task": hands_on.model_dump(),
+        "market_insight": {
+            "headline": insight.headline, "thesis": insight.thesis, "skill_slug": insight.skill_slug, "body": essay,
+            "word_count": cc.count_words(essay), "evidence": [_article_ref(a) for a in evidence],
+        },
+    }
     tasks = [
-        {"kind": "reading", "skill_slug": out.morning_reading.skill_slug, "difficulty": out.morning_reading.difficulty,
-         "title": by_id[out.morning_reading.article_id].candidate.title},
-        {"kind": "hands_on", "skill_slug": out.hands_on_task.skill_slug, "difficulty": out.hands_on_task.difficulty,
-         "title": out.hands_on_task.title},
-        {"kind": "insight", "skill_slug": out.market_insight.skill_slug, "difficulty": 1, "title": out.market_insight.headline},
+        {"kind": "reading", "skill_slug": reading.skill_slug, "difficulty": reading.difficulty, "title": reading.chapter_title,
+         "reading_content": chapter},
+        {"kind": "hands_on", "skill_slug": hands_on.skill_slug, "difficulty": hands_on.difficulty, "title": hands_on.title,
+         "evaluation_rubric": hands_on.rubric.model_dump()},
+        {"kind": "insight", "skill_slug": insight.skill_slug, "difficulty": 1, "title": insight.headline},
     ]
     briefing_id = repo.save_briefing(day, str(theme_row["id"]), payload, tasks, replace=force)
-    log.info("daily briefing saved for %s", day)
+    log.info("daily briefing saved for %s (chapter %d words, essay %d words)", day, payload["morning_reading"]["word_count"],
+             payload["market_insight"]["word_count"])
     return {"id": briefing_id, "day": day.isoformat(), "payload": payload, "cached": False}
 
 

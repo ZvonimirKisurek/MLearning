@@ -5,7 +5,7 @@ import pytest
 
 from app.curriculum.errors import LLMBudgetExceeded, LLMRefusal, LLMTruncated, LLMValidationFailed
 from app.curriculum.llm import strict_schema
-from app.curriculum.schemas import DailyBriefingOutput, GroundingContext, SummaryBatch, WeeklyThemeOutput
+from app.curriculum.schemas import DailyPlanOutput, GroundingContext, SummaryBatch, TaskEvaluationSchema, WeeklyThemeOutput
 from app.curriculum.usage import NullUsage
 from tests.factories import daily_dict
 from tests.llm_helpers import completion, make_llm
@@ -16,7 +16,7 @@ BAD = json.dumps(daily_dict("A99"))
 
 
 def gen(llm, **kw):
-    return llm.generate(system="SYS", user="USR", output_model=DailyBriefingOutput, grounding=CTX, **kw)
+    return llm.generate(system="SYS", user="USR", output_model=DailyPlanOutput, grounding=CTX, **kw)
 
 
 # ------------------------------------------------------------------ strict-mode schema
@@ -37,15 +37,15 @@ def walk(node, path="root"):
     return problems
 
 
-@pytest.mark.parametrize("model", [WeeklyThemeOutput, DailyBriefingOutput, SummaryBatch])
+@pytest.mark.parametrize("model", [WeeklyThemeOutput, DailyPlanOutput, TaskEvaluationSchema, SummaryBatch])
 def test_every_schema_satisfies_openai_strict_mode_rules(model):
     assert walk(strict_schema(model)) == []
 
 
 def test_limits_move_into_descriptions_and_nullable_fields_stay_required():
-    d = strict_schema(DailyBriefingOutput)["$defs"]["HandsOnTask"]["properties"]
-    assert "3-8 items" in d["steps"]["description"] and "100 characters" in d["title"]["description"]
-    assert "stretch_goal" in strict_schema(DailyBriefingOutput)["$defs"]["HandsOnTask"]["required"]  # optional => nullable, not omitted
+    d = strict_schema(DailyPlanOutput)["$defs"]["HandsOnTask"]["properties"]
+    assert "4-10 items" in d["steps"]["description"] and "100 characters" in d["title"]["description"]
+    assert "stretch_goal" in strict_schema(DailyPlanOutput)["$defs"]["HandsOnTask"]["required"]  # optional => nullable, not omitted
 
 
 # ------------------------------------------------------------------ request shape
@@ -53,12 +53,12 @@ def test_request_uses_strict_json_schema_chat_completion():
     sent = []
     llm, _ = make_llm([completion(GOOD)], captured=sent, usage=NullUsage())
     out = gen(llm, temperature=0.3)
-    assert out.morning_reading.article_id == "A1"
+    assert out.reading.inspiration_article_ids == ["A1"]
     req = sent[0]
     assert req["model"] == "gpt-4o" and req["temperature"] == 0.3 and req["max_completion_tokens"] == 8000
     assert [m["role"] for m in req["messages"]] == ["system", "user"] and req["messages"][0]["content"] == "SYS"
     rf = req["response_format"]
-    assert rf["type"] == "json_schema" and rf["json_schema"]["strict"] is True and rf["json_schema"]["name"] == "DailyBriefingOutput"
+    assert rf["type"] == "json_schema" and rf["json_schema"]["strict"] is True and rf["json_schema"]["name"] == "DailyPlanOutput"
     assert rf["json_schema"]["schema"]["additionalProperties"] is False
 
 
@@ -73,18 +73,18 @@ def test_temperature_and_seed_are_optional_and_model_is_overridable():
 def test_repair_loop_recovers_and_sends_the_errors_back():
     sent = []
     llm, _ = make_llm([completion(BAD), completion(GOOD)], captured=sent, usage=NullUsage())
-    assert gen(llm).morning_reading.article_id == "A1"
+    assert gen(llm).reading.inspiration_article_ids == ["A1"]
     assert len(sent) == 2
     second = sent[1]["messages"]
     assert [m["role"] for m in second] == ["system", "user", "assistant", "user"]
     assert second[2]["content"] == BAD                                   # the model sees its own answer...
-    assert "morning_reading.article_id" in second[3]["content"]           # ...and exactly where it was wrong
+    assert "reading.inspiration_article_ids" in second[3]["content"]           # ...and exactly where it was wrong
     assert "not one of the provided article ids" in second[3]["content"]
 
 
 def test_repair_loop_fixes_a_url_and_a_wrong_skill_in_one_round():
     d = daily_dict("A1")
-    d["market_insight"]["body"] = "see https://x.test"
+    d["market_insight"]["thesis"] = "see https://x.test"
     d["hands_on_task"]["skill_slug"] = "cooking"
     sent = []
     llm, _ = make_llm([completion(json.dumps(d)), completion(GOOD)], captured=sent, usage=NullUsage())

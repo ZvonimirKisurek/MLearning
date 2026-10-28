@@ -27,6 +27,7 @@ calls are sequential by design, so an async client would only add event-loop plu
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any, TypeVar
 
 import openai
@@ -95,6 +96,35 @@ class StructuredLLM:
         self._usage = usage or DbUsage(settings)
         self._client = client or openai.OpenAI(api_key=settings.openai_api_key or None, max_retries=settings.llm_sdk_retries)
 
+    # ------------------------------------------------------------------ one chat-completion attempt (shared by both modes)
+    def _chat(self, *, purpose: str, model: str, messages: list[dict], response_format: dict | None,
+              temperature: float | None, max_tokens: int, attempt: int):
+        s = self._s
+        self._usage.check()  # hard daily cap: refuse BEFORE spending, on every attempt including repairs
+        kwargs: dict[str, Any] = dict(model=model, messages=messages, max_completion_tokens=max_tokens)
+        if response_format is not None:
+            kwargs["response_format"] = response_format
+        if temperature is not None:
+            kwargs["temperature"] = temperature  # sampling temperature: see the explanation in prompts.py
+        if s.llm_seed is not None:
+            kwargs["seed"] = s.llm_seed  # best-effort reproducibility
+        try:
+            resp = self._client.chat.completions.create(**kwargs)
+        except openai.RateLimitError as exc:
+            if getattr(exc, "code", None) == "insufficient_quota":  # out of credits is not transient: do not retry
+                raise LLMBudgetExceeded("OpenAI reports insufficient quota: the account's credit/budget limit was reached") from exc
+            raise
+        choice = resp.choices[0]
+        if resp.usage:
+            self._usage.record(purpose, model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
+        log.info("llm %s attempt=%d model=%s finish=%s tokens=%s", purpose, attempt, model, choice.finish_reason, resp.usage and resp.usage.total_tokens)
+        if choice.message.refusal or choice.finish_reason == "content_filter":
+            raise LLMRefusal(f"model refused: {choice.message.refusal or 'content filter'}")
+        if choice.finish_reason == "length":
+            raise LLMTruncated(f"output hit max_completion_tokens={max_tokens}; raise LLM_MAX_TOKENS / LLM_CHAPTER_MAX_TOKENS")
+        return choice.message.content or ""
+
+    # ------------------------------------------------------------------ mode 1: structured JSON (strict schema + Pydantic + repair)
     def generate(self, *, system: str, user: str, output_model: type[T], grounding: GroundingContext,
                  model: str | None = None, temperature: float | None = None) -> T:
         s = self._s
@@ -103,28 +133,8 @@ class StructuredLLM:
         messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         last_errors = ""
         for attempt in range(s.llm_max_repairs + 1):
-            self._usage.check()  # hard daily cap: refuse BEFORE spending, on every attempt including repairs
-            kwargs: dict[str, Any] = dict(model=model, messages=messages, response_format=response_format, max_completion_tokens=s.llm_max_tokens)
-            if temperature is not None:
-                kwargs["temperature"] = temperature  # sampling temperature: see the explanation in prompts.py
-            if s.llm_seed is not None:
-                kwargs["seed"] = s.llm_seed  # best-effort reproducibility
-            try:
-                resp = self._client.chat.completions.create(**kwargs)
-            except openai.RateLimitError as exc:
-                if getattr(exc, "code", None) == "insufficient_quota":  # out of credits is not transient: do not retry
-                    raise LLMBudgetExceeded("OpenAI reports insufficient quota: the account's credit/budget limit was reached") from exc
-                raise
-            choice = resp.choices[0]
-            if resp.usage:
-                self._usage.record(output_model.__name__, model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
-            log.info("llm attempt=%d model=%s finish=%s tokens=%s", attempt, model, choice.finish_reason, resp.usage and resp.usage.total_tokens)
-
-            if choice.message.refusal or choice.finish_reason == "content_filter":
-                raise LLMRefusal(f"model refused: {choice.message.refusal or 'content filter'}")
-            if choice.finish_reason == "length":
-                raise LLMTruncated(f"output hit max_completion_tokens={s.llm_max_tokens}; raise LLM_MAX_TOKENS")
-            text = choice.message.content or ""
+            text = self._chat(purpose=output_model.__name__, model=model, messages=messages, response_format=response_format,
+                              temperature=temperature, max_tokens=s.llm_max_tokens, attempt=attempt)
             try:
                 return output_model.model_validate_json(text, context=grounding)
             except ValidationError as exc:
@@ -135,3 +145,31 @@ class StructuredLLM:
                     {"role": "user", "content": "Your JSON failed validation:\n" + last_errors + "\nReturn the complete corrected JSON object."},
                 ]
         raise LLMValidationFailed(f"still invalid after {s.llm_max_repairs} repairs:\n{last_errors}")
+
+    # ------------------------------------------------------------------ mode 2: long-form markdown, validated by measurement
+    def generate_text(self, *, system: str, user: str, check: Callable[[str], list[str]], purpose: str,
+                      model: str | None = None, temperature: float | None = None, max_tokens: int | None = None) -> str:
+        """Free-form text (a chapter, an essay) that must satisfy `check`, a function returning a list of problems.
+
+        Why not put a 2,000-word chapter inside a JSON string? JSON-escaped markdown (\\n, \\", code fences) degrades
+        quality and truncates easily, and a JSON schema cannot express "at least 1,500 words". Plain text lets the model
+        write naturally; `check` measures what we required (words, structure, valid Python, citations, no links) and the same
+        repair idea applies: show the model its own text plus the exact problems and ask for the complete corrected text.
+        """
+        s = self._s
+        model = model or s.llm_model
+        messages: list[dict] = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        problems: list[str] = []
+        for attempt in range(s.llm_max_repairs + 1):
+            text = self._chat(purpose=purpose, model=model, messages=messages, response_format=None, temperature=temperature,
+                              max_tokens=max_tokens or s.llm_chapter_max_tokens, attempt=attempt)
+            problems = check(text)
+            if not problems:
+                return text.strip()
+            log.warning("%s failed checks (attempt %d): %s", purpose, attempt, problems)
+            messages += [
+                {"role": "assistant", "content": text},
+                {"role": "user", "content": "Your text does not meet the requirements:\n" + "\n".join(f"- {p}" for p in problems)
+                 + "\nReturn the COMPLETE corrected text (not just the changed parts), in the same markdown format, with no preamble."},
+            ]
+        raise LLMValidationFailed(f"{purpose} still failing after {s.llm_max_repairs} repairs:\n" + "\n".join(problems))

@@ -18,10 +18,13 @@ stripped from the wire schema by `llm.strict_schema` (they become hints in each 
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationInfo, model_validator
+
+from app.curriculum import content_checks as cc
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,7 @@ class GroundingContext:
     article_ids: frozenset[str]  # short ids shown in the prompt, e.g. "A7"
     skill_slugs: frozenset[str]
     required_focus: frozenset[str] | None = None  # set in roadmap mode: focus_skills must equal this
+    rubric: "Rubric | None" = None  # set when GRADING: the evaluation must score exactly these criteria
 
 
 def _grounding(info: ValidationInfo) -> GroundingContext | None:
@@ -56,10 +60,10 @@ def _skill_slug(v: str, info: ValidationInfo) -> str:
 
 
 def _no_urls(v: str) -> str:
-    # Links come from our database, never from the model. A URL in generated text is, by construction,
-    # something the model recalled or invented - reject it and let the repair loop remove it.
-    if "http://" in v or "https://" in v or "www." in v:
-        raise ValueError("do not include URLs; refer to sources by article id or by library/function name")
+    # Links come from our database, never from the model. A URL in generated text is, by construction, something the
+    # model recalled or invented - reject it and let the repair loop remove it. (localhost addresses are fine: commands use them.)
+    if cc.external_urls(v):
+        raise ValueError("do not include URLs; refer to sources by article id ([A3]) or by library/function name")
     return v
 
 
@@ -69,80 +73,190 @@ Text = Annotated[str, AfterValidator(_no_urls)]
 
 
 class _Strict(BaseModel):
-    # extra="forbid" -> `additionalProperties: false` in the schema, which the API requires.
+    # extra="forbid" -> `additionalProperties: false` in the schema, which strict structured outputs require.
     model_config = ConfigDict(extra="forbid")
 
 
-# ------------------------------------------------------------------------------ weekly theme
+# ------------------------------------------------------------------------------ weekly theme (a graduate-seminar syllabus)
 class DayPlan(_Strict):
     day: int = Field(ge=1, le=7, description="ISO weekday: 1=Monday ... 7=Sunday")
     focus: Text = Field(max_length=140, description="One-line focus for the day, e.g. 'Write a training loop from scratch'")
     skill_slug: SkillSlug
     intensity: Literal["light", "normal", "stretch"] = Field(description="Weekend days should be light")
-    reading_hint: Text = Field(max_length=200, description="What kind of article would fit this day")
-    build_hint: Text = Field(max_length=200, description="What kind of small coding task would fit this day")
+    reading_hint: Text = Field(max_length=200, description="What the day's chapter should teach")
+    build_hint: Text = Field(max_length=200, description="What the day's hands-on project should build")
 
 
 class WeeklyThemeOutput(_Strict):
-    title: Text = Field(max_length=90, description="Theme title, e.g. 'Building RAG pipelines with PyTorch and pgvector'")
-    rationale: Text = Field(max_length=900, description="Why this theme, this week, for this learner; cite market signals")
+    title: Text = Field(max_length=90, description="Seminar title, e.g. 'Retrieval as Representation: Embeddings, Indexes and Evaluation'")
+    rationale: Text = Field(max_length=900, description="The week's thesis in one dense paragraph")
+    seminar_overview: Text = Field(
+        max_length=7000,
+        description="The syllabus essay (450-800 words, markdown, continuous prose, no bullet lists): why this topic is "
+                    "critical for an ML engineer, the intellectual arc of the week, the research and industry evidence, "
+                    "citing supplied articles as [A3]",
+    )
+    core_questions: list[Text] = Field(min_length=3, max_length=5, description="The research-style questions the week should let you answer")
     market_signals: list[Text] = Field(min_length=2, max_length=5, description="Concrete trends seen in the supplied articles")
     focus_skills: list[SkillSlug] = Field(min_length=1, max_length=3)
-    learning_objectives: list[Text] = Field(min_length=3, max_length=5, description="Observable outcomes by Sunday")
+    learning_objectives: list[Text] = Field(min_length=3, max_length=5, description="Observable outcomes by Sunday, starting with a verb (derive, implement, evaluate...)")
     key_article_ids: list[ArticleRef] = Field(min_length=3, max_length=10, description="Articles that best evidence the theme")
     daily_plan: list[DayPlan] = Field(min_length=7, max_length=7, description="Exactly one entry per weekday 1..7")
 
     @model_validator(mode="after")
-    def _days_complete(self, info: ValidationInfo) -> WeeklyThemeOutput:
+    def _syllabus_quality(self, info: ValidationInfo) -> WeeklyThemeOutput:
         g = _grounding(info)
         if g is not None and g.required_focus is not None and set(self.focus_skills) != set(g.required_focus):
             raise ValueError(f"focus_skills must be exactly {sorted(g.required_focus)} (the roadmap's skills for this week)")
         if sorted(d.day for d in self.daily_plan) != list(range(1, 8)):
             raise ValueError("daily_plan must contain each day 1..7 exactly once")
+        problems = cc.check_prose(self.seminar_overview, min_words=400, max_words=900,
+                                  article_ids=g.article_ids if g else None, min_citations=3 if g and len(g.article_ids) >= 3 else 0)
+        if problems:
+            raise ValueError("seminar_overview: " + "; ".join(problems))
         return self
 
 
-# ------------------------------------------------------------------------------ daily briefing
-class MorningReading(_Strict):
-    article_id: ArticleRef
-    skill_slug: SkillSlug
-    difficulty: int = Field(ge=1, le=3, description="1=accessible, 3=research-level")
-    why_it_matters: Text = Field(max_length=400)
-    guiding_questions: list[Text] = Field(min_length=2, max_length=4, description="Questions to answer while reading")
-    estimated_minutes: int = Field(ge=5, le=45)
+# ------------------------------------------------------------------------------ rubric + hands-on
+class RubricCriterion(_Strict):
+    name: Text = Field(max_length=60, description="Short unique name, e.g. 'Correct cosine similarity'")
+    description: Text = Field(max_length=300, description="Observable evidence in the submission that earns full points")
+    max_points: int = Field(ge=1, le=10)
+    must_pass: bool = Field(description="If true, earning less than half of this criterion's points fails the whole task")
+
+
+class Rubric(_Strict):
+    pass_score: int = Field(ge=5, le=9, description="Minimum overall score (1-10) to pass")
+    criteria: list[RubricCriterion] = Field(min_length=3, max_length=6)
+
+    @model_validator(mode="after")
+    def _well_formed(self) -> Rubric:
+        names = [c.name.strip().lower() for c in self.criteria]
+        if len(set(names)) != len(names):
+            raise ValueError("rubric criterion names must be unique")
+        if sum(c.max_points for c in self.criteria) < 10:
+            raise ValueError("rubric max_points must sum to at least 10")
+        return self
+
+
+def compute_grade(rubric: Rubric, results: list["CriterionResult"]) -> tuple[int, bool]:
+    """The ONLY definition of the grade. score = round(10 * earned / possible), floor 1; passed = score >= pass_score
+    AND every must_pass criterion earned at least half of its points. The grader model is not trusted to do this arithmetic."""
+    by_name = {r.criterion.strip().lower(): r for r in results}
+    total = sum(c.max_points for c in rubric.criteria)
+    earned = sum(min(by_name[c.name.strip().lower()].points, c.max_points) for c in rubric.criteria)
+    score = max(1, round(10 * earned / total))
+    must_ok = all(by_name[c.name.strip().lower()].points >= math.ceil(c.max_points / 2) for c in rubric.criteria if c.must_pass)
+    return score, score >= rubric.pass_score and must_ok
+
+
+class HandsOnStep(_Strict):
+    title: Text = Field(max_length=100)
+    instructions: Text = Field(max_length=1000, description="Imperative and specific: name the exact file to create or edit and what goes in it")
+    commands: list[Text] = Field(max_length=6, description="Exact terminal commands for this step, copy-pasteable; empty list if none")
+    expected_output: Text = Field(max_length=600, description="Exactly what the learner should see after this step (output, file, plot); empty string if none")
 
 
 class HandsOnTask(_Strict):
     title: Text = Field(max_length=100)
     skill_slug: SkillSlug
     difficulty: int = Field(ge=1, le=3)
-    objective: Text = Field(max_length=300)
-    prerequisites: list[Text] = Field(max_length=4, description="Things to have installed/known; may be empty")
-    steps: list[Text] = Field(min_length=3, max_length=8, description="Concrete ordered steps")
-    deliverable: Text = Field(max_length=250, description="A checkable artifact: a script, a passing test, a plot")
+    objective: Text = Field(max_length=500)
+    prerequisites: list[Text] = Field(max_length=5, description="Things to install or know first; may be empty")
+    project_layout: list[Text] = Field(min_length=1, max_length=8, description="Every file the project will contain, e.g. 'lab/embed.py'")
+    steps: list[HandsOnStep] = Field(min_length=4, max_length=10, description="Step 1, Step 2, ... in order")
+    deliverable: Text = Field(max_length=300, description="A checkable artifact: a script, a passing test, a printed table")
+    submission_instructions: Text = Field(max_length=500, description="Exactly what to paste for grading (the code AND the terminal output of running it)")
     docs_to_consult: list[Text] = Field(max_length=4, description="Official docs by library + symbol name, no URLs; may be empty")
-    estimated_minutes: int = Field(ge=15, le=90)
+    estimated_minutes: int = Field(ge=20, le=90)
     stretch_goal: Text | None = Field(description="Optional extension, or null")
+    rubric: Rubric
 
 
-class MarketInsight(_Strict):
+# ------------------------------------------------------------------------------ daily plan (stage 1 of the chain)
+class ChapterSection(_Strict):
+    heading: Text = Field(max_length=80)
+    key_points: Text = Field(max_length=500, description="What this section must establish: concepts, the intuition, the formula, the example")
+    target_words: int = Field(ge=120, le=500)
+
+
+class ReadingPlan(_Strict):
+    chapter_title: Text = Field(max_length=100)
+    skill_slug: SkillSlug
+    difficulty: int = Field(ge=1, le=3, description="1=from scratch, 3=research-level")
+    learning_goals: list[Text] = Field(min_length=3, max_length=5, description="After reading you can... (observable)")
+    sections: list[ChapterSection] = Field(min_length=7, max_length=10, description="Ordered outline; include worked examples, pitfalls and a final 'Check Your Understanding'")
+    inspiration_article_ids: list[ArticleRef] = Field(min_length=1, max_length=3, description="Supplied articles to use as case studies or motivation")
+    estimated_minutes: int = Field(ge=20, le=60)
+
+    @model_validator(mode="after")
+    def _budget(self) -> ReadingPlan:
+        if sum(s.target_words for s in self.sections) < 1800:
+            raise ValueError("section target_words must sum to at least 1800 so the finished chapter clears the 1500-word minimum")
+        return self
+
+
+class InsightPlan(_Strict):
     headline: Text = Field(max_length=120)
-    body: Text = Field(max_length=700, description="What is happening, grounded in the supplied articles")
-    career_angle: Text = Field(max_length=400, description="Why it matters for an engineer moving into ML engineering")
-    skill_slug: SkillSlug = Field(description="The skill this insight most relates to")
+    thesis: Text = Field(max_length=400, description="The one claim the essay will argue")
+    skill_slug: SkillSlug
     evidence_article_ids: list[ArticleRef] = Field(min_length=1, max_length=4)
 
 
-class DailyBriefingOutput(_Strict):
-    morning_reading: MorningReading
+class DailyPlanOutput(_Strict):
+    reading: ReadingPlan
     hands_on_task: HandsOnTask
-    market_insight: MarketInsight
+    market_insight: InsightPlan
 
     @model_validator(mode="after")
-    def _time_budget(self) -> DailyBriefingOutput:
-        total = self.morning_reading.estimated_minutes + self.hands_on_task.estimated_minutes
-        if total > 120:
-            raise ValueError(f"reading + hands-on must fit in 120 minutes, got {total}")
+    def _time_budget(self) -> DailyPlanOutput:
+        total = self.reading.estimated_minutes + self.hands_on_task.estimated_minutes
+        if total > 135:
+            raise ValueError(f"reading + hands-on must fit in 135 minutes, got {total}")
+        return self
+
+
+# ------------------------------------------------------------------------------ evaluation (grading a submission)
+class CriterionResult(_Strict):
+    criterion: Text = Field(max_length=60, description="Exactly the rubric criterion's name")
+    points: int = Field(ge=0, le=10)
+    max_points: int = Field(ge=1, le=10, description="The rubric's max_points for this criterion")
+    evidence: Text = Field(max_length=500, description="Point at the specific part of the submission (a line, a function, an output) that justifies the points")
+
+
+class TaskEvaluationSchema(_Strict):
+    """What the grader must return. `score` and `passed` are checked against the rubric arithmetic (compute_grade),
+    so a grader that is confused, flattered or prompt-injected by the submission cannot award a pass its own scores do not support."""
+
+    criteria: list[CriterionResult]
+    score: int = Field(ge=1, le=10)
+    passed: bool
+    summary: Text = Field(max_length=600, description="2-3 sentence verdict")
+    strengths: list[Text] = Field(min_length=1, max_length=5)
+    problems: list[Text] = Field(max_length=6, description="Specific defects, each tied to the submission; empty if flawless")
+    how_to_improve: list[Text] = Field(min_length=1, max_length=6, description="Concrete next actions, most important first")
+    feedback_markdown: Text = Field(max_length=5000, description="Detailed professor-style feedback in markdown: what you did well, what is wrong and why, how to fix it")
+
+    @model_validator(mode="after")
+    def _consistent_with_rubric(self, info: ValidationInfo) -> TaskEvaluationSchema:
+        g = _grounding(info)
+        if g is None or g.rubric is None:
+            return self
+        rubric = g.rubric
+        want = {c.name.strip().lower(): c for c in rubric.criteria}
+        got = [r.criterion.strip().lower() for r in self.criteria]
+        if sorted(got) != sorted(want):
+            raise ValueError(f"criteria must be exactly the rubric's, each once: {[c.name for c in rubric.criteria]}")
+        for r in self.criteria:
+            c = want[r.criterion.strip().lower()]
+            if r.max_points != c.max_points:
+                raise ValueError(f"max_points for {c.name!r} must be {c.max_points}")
+            if r.points > c.max_points:
+                raise ValueError(f"points for {c.name!r} cannot exceed {c.max_points}")
+        score, passed = compute_grade(rubric, self.criteria)
+        if self.score != score or self.passed != passed:
+            raise ValueError(f"score and passed must follow the rubric arithmetic: the criteria points give score={score}, "
+                             f"passed={str(passed).lower()} (pass_score={rubric.pass_score}); fix them and make the feedback consistent")
         return self
 
 

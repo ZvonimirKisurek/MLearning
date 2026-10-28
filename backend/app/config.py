@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     temp_weekly: float = 0.6  # planning a theme benefits from some variety
     temp_daily: float = 0.3  # stay close to the evidence
     temp_summary: float = 0.2  # near-deterministic restating
+    temp_chapter: float = 0.5  # teaching prose: fluent but not wandering
+    temp_eval: float = 0.1  # grading should be as repeatable as possible
+
+    # --- deep learning mode ---
+    llm_chapter_max_tokens: int = 12000  # a 2,000+ word chapter with code needs ~4-6k tokens; leave headroom
+    chapter_min_words: int = 1500  # prose words (outside code fences) the chapter must reach
+    essay_min_words: int = 450
+    essay_max_words: int = 800
+    max_submission_attempts: int = 6  # graded attempts per task (each one is an LLM call)
+    max_submission_chars: int = 20000
     llm_max_repairs: int = 2  # re-prompts after a validation failure before giving up
     llm_daily_budget_usd: float = 1.0  # hard cap on estimated LLM spend per rolling 24h (typical use is ~$0.15/day)
     llm_sdk_retries: int = 5  # SDK-level exponential backoff on 429/5xx/connection errors

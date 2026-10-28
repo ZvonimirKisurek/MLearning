@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 from psycopg import AsyncConnection
+from psycopg.types.json import Jsonb
 
 from app.config import Settings
 from app.curriculum.skills import apply_delta, compute_delta
@@ -14,6 +15,20 @@ from app.curriculum.skills import apply_delta, compute_delta
 
 class BadCursor(ValueError):
     pass
+
+
+class SubmissionRequired(Exception):
+    """A hands-on task cannot be ticked off: it is completed only by a PASSING graded submission."""
+
+
+class SubmissionRejected(Exception):
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status, self.detail = status, detail
+
+
+TASK_COLS = ("id, kind, skill_slug, difficulty, title, completed_at, points_awarded, attempt_count, evaluation_score, "
+             "evaluation_passed, (reading_content is not null) as has_content")
 
 
 # ----------------------------------------------------------------------------------------------- skills
@@ -38,7 +53,7 @@ async def fetch_skills(conn: AsyncConnection) -> list[dict]:
 # ----------------------------------------------------------------------------------------------- today
 async def _tasks(conn: AsyncConnection, briefing_id) -> list[dict]:
     rows = await (await conn.execute(
-        """select id, kind, skill_slug, difficulty, title, completed_at, points_awarded from daily_tasks
+        f"""select {TASK_COLS} from daily_tasks
            where briefing_id=%s order by case kind when 'reading' then 1 when 'hands_on' then 2 else 3 end""",
         (briefing_id,))).fetchall()
     return [{**r, "completed": r["completed_at"] is not None} for r in rows]
@@ -59,7 +74,7 @@ async def fetch_today(conn: AsyncConnection, day: date) -> dict:
 
 
 # ----------------------------------------------------------------------------------------------- completion
-async def complete_task(conn: AsyncConnection, task_id: UUID) -> dict | None:
+async def complete_task(conn: AsyncConnection, task_id: UUID, *, via_evaluation: bool = False) -> dict | None:
     """Mark a task done and move its skill - atomically, idempotently, and safe under concurrency.
 
     * The conditional UPDATE (`completed_at is null`) is the idempotency guard. Two simultaneous requests
@@ -69,6 +84,9 @@ async def complete_task(conn: AsyncConnection, task_id: UUID) -> dict | None:
       on the same skill completed at the same instant must not overwrite each other's increment).
     * All of this runs in the request's transaction (Conn dependency): it commits together or not at all.
     """
+    kind_row = await (await conn.execute("select kind from daily_tasks where id=%s", (task_id,))).fetchone()
+    if kind_row is not None and kind_row["kind"] == "hands_on" and not via_evaluation:
+        raise SubmissionRequired  # hands-on work is completed by a passing graded submission, never by a tick
     task = await (await conn.execute(
         "update daily_tasks set completed_at=now() where id=%s and completed_at is null "
         "returning id, briefing_id, kind, skill_slug, difficulty", (task_id,))).fetchone()
@@ -95,11 +113,75 @@ async def complete_task(conn: AsyncConnection, task_id: UUID) -> dict | None:
 
 
 async def _completion(conn, task_id, slug, delta, level, briefing_done, already) -> dict:
-    task = await (await conn.execute(
-        "select id, kind, skill_slug, difficulty, title, completed_at, points_awarded from daily_tasks where id=%s", (task_id,))).fetchone()
+    task = await (await conn.execute(f"select {TASK_COLS} from daily_tasks where id=%s", (task_id,))).fetchone()
     return {"task": {**task, "completed": task["completed_at"] is not None},
             "skill": {"slug": slug, "level": round(level, 3), "delta": delta},
             "briefing_completed": briefing_done, "already_completed": already}
+
+
+# ----------------------------------------------------------------------------------------------- task detail + grading
+async def get_task_detail(conn: AsyncConnection, task_id: UUID, max_attempts: int) -> dict | None:
+    row = await (await conn.execute(
+        """select t.id, t.kind, t.skill_slug, t.difficulty, t.title, t.completed_at, t.points_awarded, t.attempt_count,
+                  t.evaluation_score, t.evaluation_passed, (t.reading_content is not null) as has_content,
+                  t.reading_content, t.user_submission, t.evaluation_result, b.day, b.payload
+           from daily_tasks t join daily_briefings b on b.id = t.briefing_id where t.id = %s""", (task_id,))).fetchone()
+    if row is None:
+        return None
+    payload, kind = row["payload"], row["kind"]
+    task = {k: row[k] for k in ("id", "kind", "skill_slug", "difficulty", "title", "completed_at", "points_awarded", "attempt_count",
+                                "evaluation_score", "evaluation_passed", "has_content")}
+    task["completed"] = row["completed_at"] is not None
+    return {
+        "task": task, "day": row["day"], "attempts_max": max_attempts, "attempts_used": row["attempt_count"],
+        "reading": {**payload["morning_reading"], "content": row["reading_content"]} if kind == "reading" else None,
+        "hands_on": payload["hands_on_task"] if kind == "hands_on" else None,
+        "insight": payload["market_insight"] if kind == "insight" else None,
+        "submission": row["user_submission"], "evaluation": row["evaluation_result"],
+    }
+
+
+async def begin_submission(conn: AsyncConnection, task_id: UUID, submission: str, max_attempts: int, max_chars: int) -> dict:
+    """Validate that this task can be graded, then record the submission and use up an attempt, atomically.
+    The row lock (`for update`) serialises concurrent submissions; the attempt counter is the per-task cost guard."""
+    row = await (await conn.execute(
+        """select t.kind, t.completed_at, t.evaluation_rubric, t.attempt_count, b.payload
+           from daily_tasks t join daily_briefings b on b.id = t.briefing_id where t.id = %s for update of t""", (task_id,))).fetchone()
+    if row is None:
+        raise SubmissionRejected(404, "task not found")
+    if row["kind"] != "hands_on" or not row["evaluation_rubric"]:
+        raise SubmissionRejected(409, "only hands-on tasks with a rubric can be submitted")
+    if row["completed_at"] is not None:
+        raise SubmissionRejected(409, "you already passed this task")
+    if len(submission) > max_chars:
+        raise SubmissionRejected(413, f"submission is {len(submission):,} characters; the limit is {max_chars:,}")
+    if row["attempt_count"] >= max_attempts:
+        raise SubmissionRejected(429, f"attempt limit reached ({max_attempts}); study the feedback and try again tomorrow")
+    await conn.execute("update daily_tasks set attempt_count = attempt_count + 1, user_submission = %s, submitted_at = now() where id = %s",
+                       (submission, task_id))
+    return {"task": row["payload"]["hands_on_task"], "rubric": row["evaluation_rubric"], "attempts_used": row["attempt_count"] + 1}
+
+
+async def refund_attempt(conn: AsyncConnection, task_id: UUID) -> None:
+    """An infrastructure failure (LLM down, budget reached) must not cost the learner an attempt."""
+    await conn.execute("update daily_tasks set attempt_count = greatest(attempt_count - 1, 0) where id = %s", (task_id,))
+
+
+async def finish_submission(conn: AsyncConnection, task_id: UUID, evaluation: dict, max_attempts: int) -> dict:
+    """Store the graded result; if (and only if) it PASSED, complete the task, which moves the skill matrix.
+    A concurrent request that already passed is never overwritten by a later failing evaluation."""
+    await conn.execute(
+        """update daily_tasks set evaluation_result = %(r)s, evaluation_score = %(s)s, evaluation_passed = %(p)s,
+               ai_evaluation_feedback = %(f)s, evaluated_at = now()
+           where id = %(id)s and (completed_at is null or %(p)s)""",
+        {"r": Jsonb(evaluation), "s": evaluation["score"], "p": evaluation["passed"], "f": evaluation["feedback_markdown"], "id": task_id})
+    completion = await complete_task(conn, task_id, via_evaluation=True) if evaluation["passed"] else None
+    task = await (await conn.execute(f"select {TASK_COLS} from daily_tasks where id=%s", (task_id,))).fetchone()
+    done = await (await conn.execute(
+        "select b.completed_at is not null as d from daily_tasks t join daily_briefings b on b.id=t.briefing_id where t.id=%s", (task_id,))).fetchone()
+    return {"task": {**task, "completed": task["completed_at"] is not None}, "evaluation": evaluation, "passed": evaluation["passed"],
+            "skill": completion["skill"] if completion and not completion["already_completed"] else None,
+            "briefing_completed": done["d"], "attempts_used": task["attempt_count"], "attempts_max": max_attempts}
 
 
 async def briefing_exists(conn: AsyncConnection, day: date) -> bool:
