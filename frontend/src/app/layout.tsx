@@ -6,6 +6,8 @@ import "katex/dist/katex.min.css";
 import "highlight.js/styles/github-dark.css";
 import { Activity } from "lucide-react";
 import { NavLinks } from "@/components/nav-links";
+import { NotebookProvider, NotebookRouteSync } from "@/components/reading/notebook-context";
+import { NotebookDrawerHost, NotebookFab } from "@/components/reading/notebook-fab";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark h-full antialiased">
       <body className="min-h-full">
+        <NotebookProvider>
         <header className="sticky top-0 z-30 border-b border-white/[0.07] bg-[#07080c]/70 backdrop-blur-xl">
           <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4">
             <div className="flex items-center gap-2 font-mono text-sm font-semibold tracking-tight">
@@ -34,6 +37,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
+        {/* Mounted at the root, OUTSIDE app/template.tsx: that template's animated wrapper would otherwise become the
+            containing block for `position: fixed` and drag the button along with the page transition. */}
+        <Suspense fallback={null}><NotebookRouteSync /></Suspense>
+        <NotebookFab />
+        <NotebookDrawerHost />
+        </NotebookProvider>
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { ApiError, completeTask, queueBriefing, saveNotes, submitTask } from "@/lib/api";
+import { ApiError, completeTask, getTask, queueBriefing, saveNotes, submitTask } from "@/lib/api";
 import type { Completion, SubmissionResult } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,6 +63,17 @@ export async function saveNotesAction(taskId: string, notes: string): Promise<Ac
   try {
     const r = await saveNotes(taskId, notes);
     return { ok: true, data: { updatedAt: r.updated_at } };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/** Loads what the global notebook needs for any chapter or lab: its title and the saved notes. */
+export async function loadNotebookAction(taskId: string): Promise<ActionResult<{ title: string; notes: string }>> {
+  if (!UUID.test(taskId)) return { ok: false, error: "Invalid task id" };
+  try {
+    const d = await getTask(taskId);
+    return { ok: true, data: { title: d.reading?.chapter_title ?? d.hands_on?.title ?? "Notes", notes: d.notes } };
   } catch (e) {
     return { ok: false, error: message(e) };
   }

@@ -8,7 +8,6 @@ import type { TaskDetail } from "@/lib/types";
 import { ExternalLink } from "@/components/mission/task-bodies";
 import { Reveal } from "@/components/motion";
 import { FinishChapter } from "./finish-chapter";
-import { NotebookDrawer } from "./notebook-drawer";
 import { ReadingProgress } from "./reading-progress";
 
 const LEVEL = ["", "From scratch", "Intermediate", "Advanced"];
@@ -19,7 +18,6 @@ export function ReadingView({ detail }: { detail: TaskDetail }) {
   return (
     <div>
       <ReadingProgress />
-      <NotebookDrawer taskId={detail.task.id} chapterTitle={r.chapter_title} initialNotes={detail.notes} />
       <Link href="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="size-4" /> Today&apos;s mission</Link>
 
       <Reveal>
