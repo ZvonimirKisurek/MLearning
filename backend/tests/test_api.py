@@ -357,3 +357,66 @@ def test_summary_schema_requires_exact_coverage():
         SummaryBatch.model_validate({"summaries": [{"id": "S1", "summary": "x"}]}, context=ctx)
     with pytest.raises(Exception, match="https"):
         SummaryBatch.model_validate({"summaries": [{"id": "S1", "summary": "see https://x.y"}, {"id": "S2", "summary": "y"}]}, context=ctx)
+
+
+# --------------------------------------------------------------------------------------------- history / by-date
+def _insert_past_briefing(db, day):
+    """Clone today's stored briefing onto an earlier date (day is unique per briefing)."""
+    with psycopg.connect(db, autocommit=True) as conn:
+        conn.execute("update daily_briefings set day = %s", (day,))
+
+
+async def test_history_is_empty_then_lists_generated_days_as_plain_strings(client, db):
+    assert (await client.get("/api/briefings/history")).json() == []
+    seed_articles()
+    generate_today()
+    r = await client.get("/api/briefings/history")
+    assert r.status_code == 200 and r.json() == [TODAY.isoformat()]
+
+
+async def test_briefing_by_date_today_matches_api_today_and_pending_is_200(client, db):
+    pending = await client.get(f"/api/briefings/{TODAY}")
+    assert pending.status_code == 200 and pending.json()["state"] == "pending"
+    seed_articles()
+    generate_today()
+    assert (await client.get(f"/api/briefings/{TODAY}")).json() == (await client.get("/api/today")).json()
+
+
+async def test_briefing_by_date_serves_stored_past_day_and_404s_missing_future_and_bad_dates(client, db):
+    from datetime import timedelta
+    seed_articles()
+    generate_today()
+    past = TODAY - timedelta(days=3)
+    _insert_past_briefing(db, past)
+    r = await client.get(f"/api/briefings/{past}")
+    assert r.status_code == 200 and r.json()["state"] == "ready" and len(r.json()["briefing"]["tasks"]) == 3
+    assert (await client.get(f"/api/briefings/{past - timedelta(days=1)}")).status_code == 404
+    assert (await client.get(f"/api/briefings/{TODAY + timedelta(days=1)}")).status_code == 404
+    assert (await client.get("/api/briefings/not-a-date")).status_code == 422
+
+
+async def test_task_detail_marks_past_day_tasks_archived(client, db):
+    from datetime import timedelta
+    seed_articles()
+    generate_today()
+    ids = task_ids(db)
+    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is False
+    _insert_past_briefing(db, TODAY - timedelta(days=2))
+    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is True
+
+
+async def test_notes_roundtrip_overwrite_limits_and_task_detail(client, db):
+    seed_articles()
+    generate_today()
+    tid = task_ids(db)["reading"]
+    assert (await client.get(f"/api/tasks/{tid}/notes")).json() == {"notes": "", "updated_at": None}
+    r = await client.put(f"/api/tasks/{tid}/notes", json={"notes": "softmax = exp / sum\nline 2 \u00e9"})
+    assert r.status_code == 200 and r.json()["updated_at"]
+    assert (await client.get(f"/api/tasks/{tid}/notes")).json()["notes"] == "softmax = exp / sum\nline 2 \u00e9"
+    assert (await client.get(f"/api/tasks/{tid}")).json()["notes"].startswith("softmax")
+    await client.put(f"/api/tasks/{tid}/notes", json={"notes": ""})
+    assert (await client.get(f"/api/tasks/{tid}/notes")).json()["notes"] == ""
+    assert (await client.put(f"/api/tasks/{tid}/notes", json={"notes": "x" * 50001})).status_code == 422
+    missing = "00000000-0000-0000-0000-000000000000"
+    assert (await client.get(f"/api/tasks/{missing}/notes")).status_code == 404
+    assert (await client.put(f"/api/tasks/{missing}/notes", json={"notes": "a"})).status_code == 404

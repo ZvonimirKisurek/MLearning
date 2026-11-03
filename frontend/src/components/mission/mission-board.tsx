@@ -35,7 +35,7 @@ const Difficulty = ({ n }: { n: number }) => (
  * Hands-on labs are different on purpose: they have NO checkbox. They are completed only by a PASSING graded submission
  * in the workspace, which is the only way that task can move your skill matrix.
  */
-export function MissionBoard({ briefing }: { briefing: Briefing }) {
+export function MissionBoard({ briefing, heading = "Today's Mission", archived = false }: { briefing: Briefing; heading?: string; archived?: boolean }) {
   const [tasks, markDone] = useOptimistic(briefing.tasks, (current: Task[], id: string) =>
     current.map((t) => (t.id === id ? { ...t, completed: true } : t)),
   );
@@ -64,7 +64,7 @@ export function MissionBoard({ briefing }: { briefing: Briefing }) {
   return (
     <section aria-labelledby="mission-h">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <h2 id="mission-h" className="text-3xl font-semibold tracking-tight"><span className="gradient-text">Today&apos;s Mission</span></h2>
+        <h2 id="mission-h" className="text-3xl font-semibold tracking-tight"><span className="gradient-text">{heading}</span></h2>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs text-muted-foreground">{done}/{tasks.length} complete</span>
           <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={tasks.length}>
@@ -112,7 +112,7 @@ export function MissionBoard({ briefing }: { briefing: Briefing }) {
                 </div>
                 {t.kind !== "insight" && (
                   <Link href={t.kind === "reading" ? `/read/${t.id}` : `/practice/${t.id}`} className="mt-0.5 hidden shrink-0 items-center gap-1.5 rounded-lg bg-primary/15 px-3 py-1.5 text-sm font-medium text-primary ring-1 ring-primary/25 transition-colors hover:bg-primary/25 sm:inline-flex">
-                    {t.kind === "reading" ? (t.completed ? "Re-read" : "Read") : t.completed ? "Review" : t.attempt_count > 0 ? "Continue" : "Start lab"} <ArrowRight className="size-3.5" />
+                    {t.kind === "reading" ? (t.completed ? "Re-read" : "Read") : t.completed || archived ? "Review" : t.attempt_count > 0 ? "Continue" : "Start lab"} <ArrowRight className="size-3.5" />
                   </Link>
                 )}
                 <button onClick={() => setOpen(isOpen ? null : t.id)} aria-expanded={isOpen} aria-label={isOpen ? "Hide details" : "Show details"}
@@ -136,7 +136,7 @@ export function MissionBoard({ briefing }: { briefing: Briefing }) {
         })}
       </motion.ul>
 
-      {done === tasks.length && (
+      {done === tasks.length && !archived && (
         <motion.p initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="mt-5 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-primary">
           <PartyPopper className="size-4" /> Mission complete. See you tomorrow.
         </motion.p>

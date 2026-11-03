@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/", label: "Command Center" },
   { href: "/feed", label: "Intelligence Feed" },
+  { href: "/calendar", label: "Calendar" },
 ];
 
 // Client Component only because it needs usePathname() for the active state; everything else in the layout stays on the server.
@@ -15,7 +16,8 @@ export function NavLinks() {
   return (
     <nav className="flex items-center gap-1 text-sm">
       {LINKS.map((l) => {
-        const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+        // A past day (/day/2026-10-28) is part of the Calendar section, so the Calendar tab stays lit there.
+        const active = l.href === "/" ? pathname === "/" : l.href === "/calendar" ? pathname.startsWith("/calendar") || pathname.startsWith("/day/") : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}

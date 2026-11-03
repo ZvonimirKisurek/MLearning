@@ -183,6 +183,17 @@ class TaskDetailOut(BaseModel):
     evaluation: TaskEvaluationSchema | None = Field(description="the latest graded result")
     attempts_used: int
     attempts_max: int
+    notes: str = Field(default="", description="the learner's notebook for this task")
+    archived: bool = Field(default=False, description="the task belongs to a past day (in the learner's timezone)")
+
+
+class NotesIn(BaseModel):
+    notes: str = Field(max_length=50000)
+
+
+class NotesOut(BaseModel):
+    notes: str
+    updated_at: datetime | None
 
 
 class SubmissionIn(BaseModel):

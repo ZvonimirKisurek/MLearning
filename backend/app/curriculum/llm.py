@@ -148,13 +148,17 @@ class StructuredLLM:
 
     # ------------------------------------------------------------------ mode 2: long-form markdown, validated by measurement
     def generate_text(self, *, system: str, user: str, check: Callable[[str], list[str]], purpose: str,
-                      model: str | None = None, temperature: float | None = None, max_tokens: int | None = None) -> str:
+                      model: str | None = None, temperature: float | None = None, max_tokens: int | None = None,
+                      clean: Callable[[str], str] | None = None) -> str:
         """Free-form text (a chapter, an essay) that must satisfy `check`, a function returning a list of problems.
 
         Why not put a 2,000-word chapter inside a JSON string? JSON-escaped markdown (\\n, \\", code fences) degrades
         quality and truncates easily, and a JSON schema cannot express "at least 1,500 words". Plain text lets the model
         write naturally; `check` measures what we required (words, structure, valid Python, citations, no links) and the same
         repair idea applies: show the model its own text plus the exact problems and ask for the complete corrected text.
+
+        `clean` (optional) deterministically fixes things not worth a repair round-trip (e.g. a stray `# Title`). It runs
+        on every reply BEFORE `check`, and its output is what is checked, shown back to the model, and returned/saved.
         """
         s = self._s
         model = model or s.llm_model
@@ -163,6 +167,8 @@ class StructuredLLM:
         for attempt in range(s.llm_max_repairs + 1):
             text = self._chat(purpose=purpose, model=model, messages=messages, response_format=None, temperature=temperature,
                               max_tokens=max_tokens or s.llm_chapter_max_tokens, attempt=attempt)
+            if clean:
+                text = clean(text)
             problems = check(text)
             if not problems:
                 return text.strip()

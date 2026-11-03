@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -12,7 +12,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.api import queries
 from app.api.deps import Cfg, Conn, Pool, get_enqueue, get_llm, require_token
-from app.api.schemas import CompletionOut, FeedPage, QueueOut, SkillOut, SubmissionIn, SubmissionOut, TaskDetailOut, TodayOut
+from app.api.schemas import CompletionOut, NotesIn, NotesOut, FeedPage, QueueOut, SkillOut, SubmissionIn, SubmissionOut, TaskDetailOut, TodayOut
 from app.curriculum.errors import LLMBudgetExceeded, LLMError
 from app.curriculum.evaluation import evaluate
 from app.ingestion.models import Category
@@ -30,6 +30,22 @@ async def today(conn: Conn, cfg: Cfg):
     """Everything the Command Center needs in one round trip. `state="pending"` (briefing null) is a normal,
     expected response before 06:30 or if generation failed - it is NOT an error, so it is a 200."""
     return await queries.fetch_today(conn, _today(cfg))
+
+
+@router.get("/briefings/history", response_model=list[date])
+async def briefing_history(conn: Conn):
+    """Every date (YYYY-MM-DD, oldest first) that has a generated briefing. The calendar uses it to know which days are clickable.
+    Declared BEFORE /briefings/{day}: FastAPI matches routes in registration order, and 'history' must not be parsed as a date."""
+    return await queries.list_briefing_days(conn)
+
+
+@router.get("/briefings/{day}", response_model=TodayOut)
+async def briefing_for_day(day: date, conn: Conn, cfg: Cfg):
+    """One day's briefing, same shape as /api/today. Today behaves exactly like /api/today (a missing briefing is a 200 'pending').
+    Any other day must have a stored briefing: past-without-data and future dates are a 404, so the UI never offers an empty page."""
+    if day != _today(cfg) and not await queries.briefing_exists(conn, day):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no briefing for that date")
+    return await queries.fetch_today(conn, day)
 
 
 @router.post("/tasks/{task_id}/complete", response_model=CompletionOut)
@@ -50,7 +66,25 @@ async def task_detail(task_id: UUID, conn: Conn, cfg: Cfg):
     detail = await queries.get_task_detail(conn, task_id, cfg.max_submission_attempts)
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
+    detail["archived"] = detail["day"] < _today(cfg)  # a past day's lab is read-only in the UI
     return detail
+
+
+@router.get("/tasks/{task_id}/notes", response_model=NotesOut)
+async def get_task_notes(task_id: UUID, conn: Conn):
+    row = await queries.get_notes(conn, task_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
+    return row
+
+
+@router.put("/tasks/{task_id}/notes", response_model=NotesOut)
+async def put_task_notes(task_id: UUID, body: NotesIn, conn: Conn):
+    """Replace the notebook text. Idempotent, so the UI can safely auto-save (debounced) and retry."""
+    row = await queries.save_notes(conn, task_id, body.notes)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
+    return row
 
 
 @router.post("/tasks/{task_id}/submit", response_model=SubmissionOut)

@@ -13,6 +13,8 @@ import { ApiError, attempt, getTask } from "@/lib/api";
 import { skillLabel } from "@/lib/skills";
 
 export const metadata: Metadata = { title: "Hands-on lab" };
+// Grading is an LLM call (10-60 s) made by a Server Action on this route; Vercel stops a function at its maxDuration.
+export const maxDuration = 300;
 
 export default function PracticePage({ params }: { params: Promise<{ taskId: string }> }) {
   return <Suspense fallback={<PracticeSkeleton />}><Content params={params} /></Suspense>;
@@ -27,7 +29,7 @@ async function Content({ params }: { params: Promise<{ taskId: string }> }) {
   if (!spec) notFound();
   return (
     <div>
-      <Link href="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="size-4" /> Today&apos;s mission</Link>
+      <Link href={detail.archived ? `/day/${detail.day}` : "/"} className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"><ArrowLeft className="size-4" /> {detail.archived ? "Back to that day" : "Today\u2019s mission"}</Link>
       <Reveal>
         <header className="mb-8 max-w-3xl">
           <div className="eyebrow mb-3 flex items-center gap-2 !text-primary"><FlaskConical className="size-3.5" /> Hands-on lab · {skillLabel(spec.skill_slug)}</div>

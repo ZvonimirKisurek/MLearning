@@ -1,4 +1,5 @@
-# One image, three roles: the API (default CMD), a Celery worker, and Celery beat. Override the command per service.
+# One image, three roles: the API (default CMD), a Celery worker, and Celery beat. Override the command per service
+# (Render: dockerCommand in render.yaml). Build context is backend/.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PYTHONPATH=/srv ENABLE_DOCS=false
@@ -22,5 +23,5 @@ EXPOSE 8000
 # Platforms like Render/Railway/Fly inject $PORT; fall back to 8000 elsewhere. `exec` makes uvicorn PID 1 so it
 # receives SIGTERM and drains in-flight requests on deploys.
 CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD python -c "import os,urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\",\"8000\")}/health', timeout=4)"
+# No HEALTHCHECK here: this image also runs the Celery worker and beat (no HTTP port). Health is checked per service:
+# Render uses healthCheckPath: /health (render.yaml); docker-compose.prod.yml defines its own check on the api service.

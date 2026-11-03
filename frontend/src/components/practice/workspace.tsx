@@ -56,7 +56,8 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
   const left = detail.attempts_max - used;
   const lines = useMemo(() => Math.max(code.split("\n").length, 14), [code]);
   const tooShort = code.trim().length < 20;
-  const canSubmit = !pending && !passed && !tooShort && code.length <= MAX && left > 0;
+  const archived = detail.archived;
+  const canSubmit = !pending && !passed && !archived && !tooShort && code.length <= MAX && left > 0;
 
   function submit() {
     if (!canSubmit) return;
@@ -90,7 +91,7 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
         </div>
         <div className="flex">
           <div aria-hidden className="select-none border-r border-white/[0.06] bg-black/20 px-3 py-4 text-right font-mono text-[13px] leading-[1.65] text-white/25">{Array.from({ length: lines }, (_, i) => <div key={i}>{i + 1}</div>)}</div>
-          <textarea ref={area} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={onKeyDown} readOnly={passed} spellCheck={false} autoCapitalize="off" autoCorrect="off" rows={14}
+          <textarea ref={area} value={code} onChange={(e) => setCode(e.target.value)} onKeyDown={onKeyDown} readOnly={passed || archived} spellCheck={false} autoCapitalize="off" autoCorrect="off" rows={14}
             aria-label="Paste your code and the terminal output here" placeholder={"# Paste your code here, then the terminal output of running it.\n# Cmd/Ctrl+Enter submits."}
             className="min-h-[22rem] w-full resize-y bg-transparent px-4 py-4 font-mono text-[13px] leading-[1.65] text-[#e6edf3] outline-none placeholder:text-white/25 read-only:opacity-70" />
         </div>
@@ -98,7 +99,7 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" onClick={submit} disabled={!canSubmit}>{pending ? <Loader2 className="animate-spin" /> : passed ? <CheckCircle2 /> : <Send />}{passed ? "Passed" : "Submit for evaluation"}</Button>
-        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
+        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : archived ? "This task is from the past and can no longer be submitted." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
         {!passed && tooShort && code.length > 0 && <span className="text-xs text-warn">Paste your code and its output first.</span>}
       </div>
 

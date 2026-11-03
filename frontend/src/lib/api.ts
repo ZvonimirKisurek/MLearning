@@ -43,12 +43,18 @@ async function request<T>(path: string, init: RequestInit = {}, timeoutMs = 15_0
 }
 
 export const getToday = () => request<Today>("/api/today");
+/** Every YYYY-MM-DD that has a stored briefing (oldest first). Drives which calendar cells are clickable. */
+export const getHistory = () => request<string[]>("/api/briefings/history");
+/** One day's briefing, same shape as getToday(). Rejects with ApiError(status 404) for a date with no stored briefing. */
+export const getDay = (date: string) => request<Today>(`/api/briefings/${date}`);
 export const getSkills = () => request<Skill[]>("/api/skills");
 export const completeTask = (id: string) => request<Completion>(`/api/tasks/${id}/complete`, { method: "POST" });
 export const getTask = (id: string) => request<TaskDetail>(`/api/tasks/${id}`);
 /** Grading is an LLM call that can take 10-60 s, so this one request gets a long timeout. */
 export const submitTask = (id: string, submission: string) =>
   request<SubmissionResult>(`/api/tasks/${id}/submit`, { method: "POST", body: JSON.stringify({ submission }) }, 150_000);
+export const saveNotes = (id: string, notes: string) =>
+  request<{ notes: string; updated_at: string | null }>(`/api/tasks/${id}/notes`, { method: "PUT", body: JSON.stringify({ notes }) });
 export const queueBriefing = () => request<{ queued: boolean; reason: string | null }>("/api/briefing/generate", { method: "POST" });
 
 export function getFeed(q: FeedQuery) {

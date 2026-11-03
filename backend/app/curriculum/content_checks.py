@@ -25,6 +25,23 @@ def strip_code(md: str) -> str:
     return _FENCE.sub("", md)
 
 
+_H1 = re.compile(r"# \S")
+
+
+def strip_h1(md: str) -> str:
+    """Remove level-1 headings (`# Title`, the whole line). The title is shown separately by the UI, and models keep
+    prepending one even after being told not to, so we fix it deterministically instead of burning repair calls on it.
+    Lines inside fenced code are left alone: a Python comment like `# load data` is code, not a heading."""
+    out, in_fence = [], False
+    for line in md.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and _H1.match(line):
+            continue
+        out.append(line)
+    return "\n".join(out).lstrip("\n")
+
+
 def count_words(md: str, *, include_code: bool = False) -> int:
     return len(_WORD.findall(md if include_code else strip_code(md)))
 
@@ -81,6 +98,7 @@ def check_prose(text: str, *, min_words: int, max_words: int | None = None, arti
 
 def check_chapter(md: str, *, min_words: int, article_ids=None) -> list[str]:
     """A textbook chapter: enough prose, real structure, valid code, math, grounded citations, no links."""
+    md = strip_h1(md)  # a stray `# Title` is removed, not failed (generate_text(clean=strip_h1) saves the cleaned text)
     problems = []
     n = count_words(md)
     if n < min_words:
@@ -88,8 +106,6 @@ def check_chapter(md: str, *, min_words: int, article_ids=None) -> list[str]:
                         f"Add at least {min_words - n + 150} words: deepen the explanations, add a worked example, intuition and pitfalls, then return the COMPLETE chapter")
     if len(re.findall(r"^```", md, re.M)) % 2:
         problems.append("a code fence is never closed (unbalanced ``` lines)")
-    if re.search(r"^# \S", md, re.M):
-        problems.append("do not use a level-1 heading (# ...): the title is shown separately; use ## for sections")
     if len(re.findall(r"^## \S", md, re.M)) < 6:
         problems.append("use at least 6 sections, each starting with a '## ' heading")
     if not re.search(r"^##\s+.*(check your understanding|self-test|exercises)", md, re.M | re.I):
@@ -107,6 +123,7 @@ def check_chapter(md: str, *, min_words: int, article_ids=None) -> list[str]:
 
 
 def check_essay(md: str, *, min_words: int, max_words: int, article_ids=None) -> list[str]:
+    md = strip_h1(md)  # level-1 titles are stripped; level-2 headings still fail below because removing them would drop content
     problems = check_prose(md, min_words=min_words, max_words=max_words, article_ids=article_ids, min_citations=2 if article_ids and len(article_ids) >= 2 else 0)
     if len([p for p in re.split(r"\n\s*\n", md.strip()) if p.strip()]) < 4:
         problems.append("write at least 4 paragraphs separated by blank lines")

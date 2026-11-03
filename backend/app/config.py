@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     temp_weekly: float = 0.6  # planning a theme benefits from some variety
     temp_daily: float = 0.3  # stay close to the evidence
     temp_summary: float = 0.2  # near-deterministic restating
-    temp_chapter: float = 0.5  # teaching prose: fluent but not wandering
+    temp_chapter: float = 0.7  # teaching prose: loose enough to elaborate at length (0.5 made GPT-4o summarise)
     temp_eval: float = 0.1  # grading should be as repeatable as possible
 
     # --- deep learning mode ---
@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     essay_max_words: int = 800
     max_submission_attempts: int = 6  # graded attempts per task (each one is an LLM call)
     max_submission_chars: int = 20000
-    llm_max_repairs: int = 2  # re-prompts after a validation failure before giving up
+    llm_max_repairs: int = 3  # re-prompts after a validation failure before giving up
     llm_daily_budget_usd: float = 1.0  # hard cap on estimated LLM spend per rolling 24h (typical use is ~$0.15/day)
     llm_sdk_retries: int = 5  # SDK-level exponential backoff on 429/5xx/connection errors
     prompt_article_count: int = 50  # articles injected into the prompt
@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     api_token: str = ""  # if set, every /api request needs "Authorization: Bearer <token>". Comma-separate to rotate: "new,old"
     enable_docs: bool = True  # /docs, /redoc, /openapi.json. The Docker image turns this off.
     cors_origins: str = "http://localhost:3000"  # comma-separated
+    frontend_url: str = ""  # e.g. https://mle-sprint.vercel.app ; added to the CORS allow-list so prod needs one variable, not a list
     db_pool_size: int = 10
     match_strong: float = 0.40  # cosine(article, skill) thresholds for the UI badge; calibrate with `cli feed-stats`
     match_moderate: float = 0.28
@@ -90,7 +91,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        origins = [o.strip().rstrip("/") for o in [*self.cors_origins.split(","), self.frontend_url] if o.strip()]
+        return list(dict.fromkeys(origins))  # browsers send Origin without a trailing slash; de-duplicate, keep order
 
 
 @lru_cache

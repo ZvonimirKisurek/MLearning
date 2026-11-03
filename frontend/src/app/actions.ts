@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { ApiError, completeTask, queueBriefing, submitTask } from "@/lib/api";
+import { ApiError, completeTask, queueBriefing, saveNotes, submitTask } from "@/lib/api";
 import type { Completion, SubmissionResult } from "@/lib/types";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -48,6 +48,21 @@ export async function submitTaskAction(taskId: string, submission: string): Prom
     const data = await submitTask(taskId, submission);
     refresh();
     return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}
+
+/**
+ * Notebook auto-save. Deliberately NO refresh(): re-rendering the chapter on every pause in typing would be wasteful
+ * and could disturb scroll position. The client already holds the text it just sent.
+ */
+export async function saveNotesAction(taskId: string, notes: string): Promise<ActionResult<{ updatedAt: string | null }>> {
+  if (!UUID.test(taskId)) return { ok: false, error: "Invalid task id" };
+  if (notes.length > 50_000) return { ok: false, error: "Notes are limited to 50,000 characters." };
+  try {
+    const r = await saveNotes(taskId, notes);
+    return { ok: true, data: { updatedAt: r.updated_at } };
   } catch (e) {
     return { ok: false, error: message(e) };
   }

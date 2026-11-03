@@ -168,7 +168,13 @@ reading.estimated_minutes + hands_on_task.estimated_minutes must not exceed 135,
 {GROUNDING_RULES}"""
 
 # --------------------------------------------------------------------------- stage 2: the chapter
+CHAPTER_CRITICAL = ("CRITICAL: This must be a comprehensive, long-form textbook chapter. Do NOT summarize. You MUST write at least "
+                    "1500 words. Expand on mathematical intuition, step-by-step code walkthroughs, and common pitfalls.")
+ESSAY_CRITICAL = "CRITICAL: You MUST cite at least two distinct articles using their [A#] tags in the body of the text."
+
 CHAPTER_SYSTEM = f"""\
+{CHAPTER_CRITICAL}
+
 {PROFESSOR}
 
 # Your task
@@ -198,10 +204,14 @@ reading for the day: it must teach the concept completely, from scratch.
 - Finish with `## Check Your Understanding`: 4-6 numbered questions of rising difficulty (recall, apply, analyse). Do NOT
   give the answers.
 
-{GROUNDING_RULES}"""
+{GROUNDING_RULES}
+
+{CHAPTER_CRITICAL}"""
 
 # --------------------------------------------------------------------------- stage 3: the market insight essay
 INSIGHT_SYSTEM = f"""\
+{ESSAY_CRITICAL}
+
 {PROFESSOR}
 
 # Your task
@@ -222,7 +232,9 @@ moving into machine learning engineering.
 - Format: markdown, continuous prose in at least four paragraphs, no bullet lists, no `#`/`##` headings (`###`
   sub-headings are allowed). Output only the essay. Never write URLs.
 
-{GROUNDING_RULES}"""
+{GROUNDING_RULES}
+
+{ESSAY_CRITICAL}"""
 
 # --------------------------------------------------------------------------- stage 4: grading a submission
 EVALUATOR_SYSTEM = f"""\
@@ -341,14 +353,14 @@ def build_chapter_prompt(plan: dict, theme: dict, plan_entry: dict, inspiration:
         f"{_theme_block(theme)}\n<chapter_plan>\ntitle: {_esc(plan['chapter_title'])}\nskill: {plan['skill_slug']}\n"
         f"difficulty: {plan['difficulty']} of 3\nlearning_goals:\n{goals}\nsections:\n{sections}\n</chapter_plan>\n"
         f"{render_articles(inspiration, window_days)}\n\n"
-        "Write the complete chapter now, following every section of the plan."
+        f"Write the complete chapter now, following every section of the plan.\n\n{CHAPTER_CRITICAL}"
     )
 
 
 def build_insight_prompt(plan: dict, evidence: list[RankedArticle], window_days: int) -> str:
     return (
         f"<essay_plan>\nheadline: {_esc(plan['headline'])}\nthesis: {_esc(plan['thesis'])}\nskill: {plan['skill_slug']}\n</essay_plan>\n"
-        f"{render_articles(evidence, window_days)}\n\nWrite the essay now."
+        f"{render_articles(evidence, window_days)}\n\nWrite the essay now.\n\n{ESSAY_CRITICAL}"
     )
 
 

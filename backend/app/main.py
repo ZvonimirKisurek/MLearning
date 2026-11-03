@@ -33,9 +33,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # headers. Our default path avoids the problem (Next.js server components/actions call this API
     # server-to-server, and browsers only ever talk to Next.js). This allow-list exists for the cases where the
     # browser calls the API directly (local experiments, a client-side fetch). Explicit origins, no wildcard,
-    # no credentials (we use a bearer header, not cookies), and only the verbs/headers we actually use.
+    # no credentials (we use a bearer header, not cookies), and only the verbs/headers we actually use (PUT = notebook).
+    # In production set FRONTEND_URL (the Vercel origin); it is added to CORS_ORIGINS. The deployed app still works with
+    # CORS misconfigured, because the browser never calls this API directly - Vercel's server does, and CORS is browser-only.
     app.add_middleware(
-        CORSMiddleware, allow_origins=settings.cors_origin_list, allow_methods=["GET", "POST"],
+        CORSMiddleware, allow_origins=settings.cors_origin_list, allow_methods=["GET", "POST", "PUT"],
         allow_headers=["Authorization", "Content-Type"], allow_credentials=False, max_age=600,
     )
     app.include_router(router)

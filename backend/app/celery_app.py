@@ -1,11 +1,25 @@
+import ssl
+
 from celery import Celery
 from celery.schedules import crontab
 
 from app.config import get_settings
 
 settings = get_settings()
-app = Celery("mle_sprint", broker=settings.redis_url, backend=settings.redis_url, include=["app.tasks"])
+# No result backend: nothing in this app ever reads a task's return value (the API only enqueues; tasks write to Postgres).
+# Dropping it removes a Redis write + expiry per task, which matters on pay-per-command Redis such as Upstash.
+app = Celery("mle_sprint", broker=settings.redis_url, include=["app.tasks"])
 app.conf.update(
+    task_ignore_result=True,
+    # Managed Redis (Upstash, Render Key Value, ElastiCache...) is TLS-only: the URL scheme is rediss://. Celery refuses a
+    # rediss:// URL without an explicit certificate policy, so supply one here instead of making you hand-edit the URL.
+    **({"broker_use_ssl": {"ssl_cert_reqs": ssl.CERT_REQUIRED}} if settings.redis_url.startswith("rediss://") else {}),
+    broker_connection_retry_on_startup=True,  # keep retrying if Redis is briefly unreachable while the container boots
+    broker_transport_options={"visibility_timeout": 3600, "socket_keepalive": True, "socket_timeout": 30,
+                              "socket_connect_timeout": 10, "retry_on_timeout": True},
+    worker_enable_remote_control=False,  # no pidbox/inspect broadcast channel: fewer idle Redis commands, nothing here uses it
+    worker_send_task_events=False,
+    broker_heartbeat=0,
     timezone=settings.timezone,  # beat schedules below are interpreted in the learner's timezone
     task_acks_late=True,  # re-deliver if a worker dies mid-run (ingestion is idempotent via url_hash)
     worker_prefetch_multiplier=1,

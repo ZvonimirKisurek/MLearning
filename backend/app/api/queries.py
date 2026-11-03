@@ -73,6 +73,16 @@ async def fetch_today(conn: AsyncConnection, day: date) -> dict:
     }
 
 
+async def list_briefing_days(conn: AsyncConnection) -> list[date]:
+    """Every day that has a stored briefing, oldest first. `day` is the primary key, so this is an index scan."""
+    rows = await (await conn.execute("select day from daily_briefings order by day")).fetchall()
+    return [r["day"] for r in rows]
+
+
+async def briefing_exists(conn: AsyncConnection, day: date) -> bool:
+    return (await (await conn.execute("select 1 from daily_briefings where day=%s", (day,))).fetchone()) is not None
+
+
 # ----------------------------------------------------------------------------------------------- completion
 async def complete_task(conn: AsyncConnection, task_id: UUID, *, via_evaluation: bool = False) -> dict | None:
     """Mark a task done and move its skill - atomically, idempotently, and safe under concurrency.
@@ -124,7 +134,7 @@ async def get_task_detail(conn: AsyncConnection, task_id: UUID, max_attempts: in
     row = await (await conn.execute(
         """select t.id, t.kind, t.skill_slug, t.difficulty, t.title, t.completed_at, t.points_awarded, t.attempt_count,
                   t.evaluation_score, t.evaluation_passed, (t.reading_content is not null) as has_content,
-                  t.reading_content, t.user_submission, t.evaluation_result, b.day, b.payload
+                  t.reading_content, t.notes, t.user_submission, t.evaluation_result, b.day, b.payload
            from daily_tasks t join daily_briefings b on b.id = t.briefing_id where t.id = %s""", (task_id,))).fetchone()
     if row is None:
         return None
@@ -137,8 +147,19 @@ async def get_task_detail(conn: AsyncConnection, task_id: UUID, max_attempts: in
         "reading": {**payload["morning_reading"], "content": row["reading_content"]} if kind == "reading" else None,
         "hands_on": payload["hands_on_task"] if kind == "hands_on" else None,
         "insight": payload["market_insight"] if kind == "insight" else None,
-        "submission": row["user_submission"], "evaluation": row["evaluation_result"],
+        "notes": row["notes"], "submission": row["user_submission"], "evaluation": row["evaluation_result"],
     }
+
+
+async def get_notes(conn: AsyncConnection, task_id: UUID) -> dict | None:
+    return await (await conn.execute("select notes, notes_updated_at as updated_at from daily_tasks where id=%s", (task_id,))).fetchone()
+
+
+async def save_notes(conn: AsyncConnection, task_id: UUID, notes: str) -> dict | None:
+    """One primary-key UPDATE ... RETURNING: a single round trip, no read-before-write, last write wins (it is a single-user notebook)."""
+    return await (await conn.execute(
+        "update daily_tasks set notes=%s, notes_updated_at=now() where id=%s returning notes, notes_updated_at as updated_at",
+        (notes, task_id))).fetchone()
 
 
 async def begin_submission(conn: AsyncConnection, task_id: UUID, submission: str, max_attempts: int, max_chars: int) -> dict:

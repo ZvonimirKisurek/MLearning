@@ -1,4 +1,7 @@
-# Deployment
+# Deployment (budget / serverless variant)
+
+> The full always-on stack (Vercel + Render API/worker/beat + Supabase + Upstash) is in **`docs/DEPLOYMENT.md`** with `render.yaml`.
+> This page describes the cheaper no-worker alternative (GitHub Actions cron + `TASK_BACKEND=inline`).
 
 ## Recommended stack (cheapest that is still robust)
 | Piece | Service | Why |

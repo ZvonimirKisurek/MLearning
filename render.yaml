@@ -1,0 +1,77 @@
+# Render Blueprint: API (web) + Celery worker + Celery beat, all from backend/Dockerfile.
+# Secrets marked `sync: false` are prompted for in the dashboard on first Blueprint apply (they are never stored in git).
+# Plans: Render has no free tier for background workers, and a free web service sleeps after idle (30-60 s cold start).
+# `starter` is the smallest always-on plan; check render.com/pricing for current prices before applying.
+
+envVarGroups:
+  - name: mle-sprint-shared          # identical on all three services
+    envVars:
+      - key: DATABASE_URL            # Supabase SESSION pooler URI (port 5432). See docs/DEPLOYMENT.md
+        sync: false
+      - key: REDIS_URL               # Upstash: must start with rediss:// (TLS)
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TIMEZONE                # drives "today" and the 06:30 / Sunday 22:00 schedules
+        value: Europe/Zagreb
+      - key: ROADMAP_START           # Monday you start the 4-week roadmap, YYYY-MM-DD (empty = off)
+        sync: false
+      - key: LLM_MODEL
+        value: gpt-4o
+      - key: LLM_DAILY_BUDGET_USD
+        value: "1.00"
+      - key: USER_AGENT
+        value: "MLE-Sprint/0.1 (personal research aggregator; contact: you@example.com)"
+      - key: TASK_BACKEND
+        value: celery
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+services:
+  # ---- FastAPI ---------------------------------------------------------------------------------------------------
+  - type: web
+    name: mle-sprint-api
+    runtime: docker
+    plan: starter
+    region: frankfurt                # keep all three services, and ideally Supabase, in the same region
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health         # unauthenticated; returns 503 if Postgres is unreachable, so Render won't route to a broken deploy
+    autoDeployTrigger: commit
+    envVars:
+      - fromGroup: mle-sprint-shared
+      - key: API_TOKEN               # shared secret with Vercel's API_TOKEN. Generate: openssl rand -hex 32
+        sync: false
+      - key: FRONTEND_URL            # your Vercel origin, e.g. https://mle-sprint.vercel.app (added to CORS)
+        sync: false
+      - key: ENABLE_DOCS
+        value: "false"
+
+  # ---- Celery worker: executes tasks ---------------------------------------------------------------------------------
+  - type: worker
+    name: mle-sprint-worker
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    # threads pool: the tasks are I/O-bound (HTTP, Postgres, OpenAI) and this uses far less RAM than prefork on a 512 MB plan.
+    # The Celery worker needs the same ROADMAP/TIMEZONE/OPENAI settings as the API, hence the shared group.
+    dockerCommand: celery -A app.celery_app worker --loglevel=INFO --pool=threads --concurrency=2 --without-gossip --without-mingle --without-heartbeat
+    envVars:
+      - fromGroup: mle-sprint-shared
+
+  # ---- Celery beat: the clock. EXACTLY ONE INSTANCE, never scale this service ----------------------------------------
+  - type: worker
+    name: mle-sprint-beat
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    numInstances: 1
+    # The schedule file lives on the container's ephemeral disk (/tmp). That is fine: a restart just starts the clock
+    # fresh and the next cron boundary fires normally. (A restart exactly across 06:30 skips that day: use "Generate now".)
+    dockerCommand: celery -A app.celery_app beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule --pidfile=
+    envVars:
+      - fromGroup: mle-sprint-shared

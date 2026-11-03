@@ -39,6 +39,12 @@ celery -A app.celery_app beat --loglevel=INFO
 # 4  Frontend
 cd frontend && npm install && npm run dev        # http://localhost:3000
 ```
+**Terminals 2+3 in one command (background cron):** `cd backend && nohup ./start_worker.sh > worker.log 2>&1 &`
+runs worker + beat together; `pkill -f start_worker.sh` stops both. Needs Redis up. Run only ONE copy (two beats double-enqueue everything).
+Beat fires `generate_daily_briefing` at 06:30 and `generate_weekly_theme` Sunday 22:00 in `TIMEZONE`; the Mac must be awake then
+(a sleeping laptop misses the tick - beat does not catch up - so use the Calendar page or `Generate now` for missed days).
+The script defaults to `--pool=threads` because the default prefork pool fails every task on Python 3.14 (`POOL=prefork` overrides).
+
 Check: `curl localhost:8000/health` returns `{"status":"ok"}` and
 `curl -H "Authorization: Bearer $API_TOKEN" localhost:8000/api/skills | head -c 200` returns JSON.
 

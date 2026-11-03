@@ -7,3 +7,7 @@ __pycache__/
 node_modules/
 .next/
 *.egg-info/
+
+# Celery beat state + local worker logs
+backend/.celery/
+backend/worker.log

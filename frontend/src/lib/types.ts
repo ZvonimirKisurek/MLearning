@@ -73,6 +73,10 @@ export interface TaskDetail {
   reading: (ReadingMeta & { content: string | null }) | null;
   hands_on: HandsOnSpec | null; insight: InsightMeta | null;
   submission: string | null; evaluation: Evaluation | null;
+  /** True when the task belongs to a past day: it stays readable but can no longer be submitted. */
+  archived: boolean;
+  /** The learner's notebook text for this task ("" if none). */
+  notes: string;
 }
 
 export interface SkillMatch { skill_slug: string; skill_name: string; similarity: number; strength: "strong" | "moderate" | "weak" }

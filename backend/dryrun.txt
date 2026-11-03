@@ -1,0 +1,398 @@
+2026-10-28 10:16:06,426 INFO httpx: HTTP Request: GET https://rss.arxiv.org/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:06,466 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.LG "HTTP/1.1 200 OK"
+2026-10-28 10:16:06,496 INFO httpx: HTTP Request: GET https://huggingface.co/api/daily_papers "HTTP/1.1 200 OK"
+2026-10-28 10:16:07,521 INFO httpx: HTTP Request: GET https://bair.berkeley.edu/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:07,530 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.AI "HTTP/1.1 200 OK"
+2026-10-28 10:16:08,096 INFO httpx: HTTP Request: GET https://bair.berkeley.edu/blog/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:08,590 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.CL "HTTP/1.1 200 OK"
+2026-10-28 10:16:08,624 INFO httpx: HTTP Request: GET https://blog.ml.cmu.edu/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:08,892 INFO httpx: HTTP Request: GET https://news.mit.edu/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:08,927 INFO httpx: HTTP Request: GET https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,024 INFO httpx: HTTP Request: GET https://deepmind.google/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,174 INFO httpx: HTTP Request: GET https://deepmind.google/blog/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,175 INFO httpx: HTTP Request: GET https://research.google/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,175 INFO httpx: HTTP Request: GET https://blog.ml.cmu.edu/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,379 INFO httpx: HTTP Request: GET https://allenai.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,467 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.CV "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,492 INFO httpx: HTTP Request: GET https://research.google/blog/rss/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,695 INFO httpx: HTTP Request: GET https://www.nature.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,696 INFO httpx: HTTP Request: GET https://allenai.org/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,777 INFO httpx: HTTP Request: GET https://www.nature.com/natmachintell.rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,874 INFO httpx: HTTP Request: GET https://techcrunch.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,913 INFO httpx: HTTP Request: GET https://techcrunch.com/category/artificial-intelligence/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,936 INFO httpx: HTTP Request: GET https://www.theverge.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:09,977 INFO httpx: HTTP Request: GET https://machinelearningmastery.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,026 INFO httpx: HTTP Request: GET https://venturebeat.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,041 INFO httpx: HTTP Request: GET https://machinelearningmastery.com/blog/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,053 INFO httpx: HTTP Request: GET https://www.theverge.com/rss/ai-artificial-intelligence/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,071 INFO httpx: HTTP Request: GET https://thegradient.pub/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,084 INFO httpx: HTTP Request: GET https://venturebeat.com/category/ai/feed/ "HTTP/1.1 429 Too Many Requests"
+2026-10-28 10:16:10,087 WARNING app.ingestion.http: HTTP 429 on https://venturebeat.com/category/ai/feed/; retry in 0.7s
+2026-10-28 10:16:10,205 INFO httpx: HTTP Request: GET https://www.technologyreview.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,240 INFO httpx: HTTP Request: GET https://www.technologyreview.com/topic/artificial-intelligence/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,248 INFO httpx: HTTP Request: GET https://www.wired.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,325 INFO httpx: HTTP Request: GET https://www.wired.com/feed/tag/ai/latest/rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,443 INFO httpx: HTTP Request: GET https://www.zdnet.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,469 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/stat.ML "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,528 INFO httpx: HTTP Request: GET https://www.zdnet.com/topic/artificial-intelligence/rss.xml "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:10,586 INFO httpx: HTTP Request: GET https://arstechnica.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,586 INFO httpx: HTTP Request: GET https://www.zdnet.com/news/rss.xml "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:10,621 INFO httpx: HTTP Request: GET https://www.zdnet.com/rss/news/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,776 INFO httpx: HTTP Request: GET https://www.artificialintelligence-news.com/robots.txt "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:10,886 INFO httpx: HTTP Request: GET https://www.artificialintelligence-news.com/feed/ "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:10,890 INFO httpx: HTTP Request: GET https://arstechnica.com/ai/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,912 INFO httpx: HTTP Request: GET https://thegradient.pub/rss/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:10,927 INFO httpx: HTTP Request: GET https://www.unite.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,132 INFO httpx: HTTP Request: GET https://venturebeat.com/category/ai/feed/ "HTTP/1.1 429 Too Many Requests"
+2026-10-28 10:16:11,136 WARNING app.ingestion.http: HTTP 429 on https://venturebeat.com/category/ai/feed/; retry in 1.1s
+2026-10-28 10:16:11,147 INFO httpx: HTTP Request: GET https://www.unite.ai/feed/ "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:11,270 INFO httpx: HTTP Request: GET https://www.theregister.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,419 INFO httpx: HTTP Request: GET https://www.marktechpost.com/robots.txt "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:11,587 INFO httpx: HTTP Request: GET https://www.marktechpost.com/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,749 INFO httpx: HTTP Request: GET https://spectrum.ieee.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,749 INFO httpx: HTTP Request: GET https://towardsdatascience.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,820 INFO httpx: HTTP Request: GET https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,858 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.IR "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,858 INFO httpx: HTTP Request: GET https://towardsdatascience.com/feed "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:11,859 INFO httpx: HTTP Request: GET https://siliconangle.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:11,933 INFO httpx: HTTP Request: GET https://towardsdatascience.com/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,042 INFO httpx: HTTP Request: GET https://www.kdnuggets.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,195 INFO httpx: HTTP Request: GET https://syncedreview.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,252 INFO httpx: HTTP Request: GET https://siliconangle.com/category/ai/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,278 INFO httpx: HTTP Request: GET https://www.kdnuggets.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,330 INFO httpx: HTTP Request: GET https://venturebeat.com/category/ai/feed/ "HTTP/1.1 429 Too Many Requests"
+2026-10-28 10:16:12,332 WARNING app.ingestion.http: HTTP 429 on https://venturebeat.com/category/ai/feed/; retry in 2.7s
+2026-10-28 10:16:12,457 INFO httpx: HTTP Request: GET https://analyticsindiamag.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,490 INFO httpx: HTTP Request: GET https://rss.arxiv.org/rss/cs.MA "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,491 INFO httpx: HTTP Request: GET https://analyticsindiamag.com/feed/ "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:12,506 INFO httpx: HTTP Request: GET https://mlops.community/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,544 INFO httpx: HTTP Request: GET https://netflixtechblog.com/robots.txt "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:12,616 INFO httpx: HTTP Request: GET https://mlops.community/feed/ "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:12,669 INFO httpx: HTTP Request: GET https://engineering.fb.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,693 INFO httpx: HTTP Request: GET https://mlops.community/feed "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:12,700 INFO httpx: HTTP Request: GET https://www.uber.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,717 INFO httpx: HTTP Request: GET https://syncedreview.com/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,719 INFO httpx: HTTP Request: GET https://engineering.fb.com/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,827 INFO httpx: HTTP Request: GET https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Fnetflixtechblog.com%2Frobots.txt "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:12,827 INFO httpx: HTTP Request: GET https://engineering.atspotify.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:12,931 INFO httpx: HTTP Request: GET https://www.uber.com/blog/engineering/rss/ "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:12,979 INFO httpx: HTTP Request: GET https://engineering.atspotify.com/feed/ "HTTP/1.1 308 Permanent Redirect"
+2026-10-28 10:16:13,044 INFO httpx: HTTP Request: GET https://analyticsindiamag.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,140 INFO httpx: HTTP Request: GET https://netflixtechblog.com/robots.txt?gi=2642f703a530 "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,143 INFO httpx: HTTP Request: GET https://www.uber.com/hr/hr/blog/engineering/rss/ "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:13,175 INFO httpx: HTTP Request: GET https://developers.googleblog.com/robots.txt "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:13,207 INFO httpx: HTTP Request: GET https://engineering.atspotify.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,345 INFO httpx: HTTP Request: GET https://developers.googleblog.com/robots.txt/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,419 INFO httpx: HTTP Request: GET https://ai.meta.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,419 INFO httpx: HTTP Request: GET https://netflixtechblog.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,483 INFO httpx: HTTP Request: GET https://www.microsoft.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,483 INFO httpx: HTTP Request: GET https://cloud.google.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,562 INFO httpx: HTTP Request: GET https://developers.googleblog.com/feeds/posts/default "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:13,601 INFO httpx: HTTP Request: GET https://openai.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,642 INFO httpx: HTTP Request: GET https://cloud.google.com/blog/products/ai-machine-learning/rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,651 INFO httpx: HTTP Request: GET https://developer.nvidia.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,689 INFO httpx: HTTP Request: GET https://openai.com/news/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,780 INFO httpx: HTTP Request: GET https://developer.nvidia.com/blog/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:13,793 INFO httpx: HTTP Request: GET https://aws.amazon.com/robots.txt "HTTP/1.1 200 "
+2026-10-28 10:16:13,981 INFO httpx: HTTP Request: GET https://developers.googleblog.com/feeds/posts/default/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:14,131 INFO httpx: HTTP Request: GET https://www.microsoft.com/en-us/research/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:14,247 INFO httpx: HTTP Request: GET https://raw.githubusercontent.com/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:14,360 INFO httpx: HTTP Request: GET https://huggingface.co/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:14,360 INFO httpx: HTTP Request: GET https://aws.amazon.com/blogs/machine-learning/feed/ "HTTP/1.1 200 "
+2026-10-28 10:16:14,397 INFO httpx: HTTP Request: GET https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:14,518 INFO httpx: HTTP Request: GET https://huggingface.co/blog/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:14,841 INFO httpx: HTTP Request: GET https://blog.langchain.dev/robots.txt "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:14,965 INFO httpx: HTTP Request: GET https://wandb.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,096 INFO httpx: HTTP Request: GET https://www.llamaindex.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,096 INFO httpx: HTTP Request: GET https://ai.meta.com/blog/rss/ "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:15,135 INFO httpx: HTTP Request: GET https://pytorch.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,156 INFO httpx: HTTP Request: GET https://www.llamaindex.ai/blog/feed "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:15,217 INFO httpx: HTTP Request: GET https://www.langchain.com/blog/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:15,222 INFO httpx: HTTP Request: GET https://venturebeat.com/category/ai/feed/ "HTTP/1.1 429 Too Many Requests"
+2026-10-28 10:16:15,242 WARNING app.ingestion.http: HTTP 429 on https://venturebeat.com/category/ai/feed/; retry in 4.6s
+2026-10-28 10:16:15,254 INFO httpx: HTTP Request: GET https://wandb.ai/fully-connected/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,358 INFO httpx: HTTP Request: GET https://www.databricks.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,426 INFO httpx: HTTP Request: GET https://blog.langchain.dev/rss/ "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:15,532 INFO httpx: HTTP Request: GET https://qdrant.tech/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,558 INFO httpx: HTTP Request: GET https://www.databricks.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,569 INFO httpx: HTTP Request: GET https://blog.tensorflow.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,644 INFO httpx: HTTP Request: GET https://www.langchain.com/blog/rss "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:15,738 INFO httpx: HTTP Request: GET https://www.langchain.com/blog "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,741 INFO httpx: HTTP Request: GET https://weaviate.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,744 INFO httpx: HTTP Request: GET https://qdrant.tech/articles/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,906 INFO httpx: HTTP Request: GET https://supabase.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:15,948 INFO httpx: HTTP Request: GET https://medium.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,080 INFO httpx: HTTP Request: GET https://github.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,101 INFO httpx: HTTP Request: GET https://milvus.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,129 INFO httpx: HTTP Request: GET https://supabase.com/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,212 INFO httpx: HTTP Request: GET https://pytorch.org/feed.xml "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:16,299 INFO httpx: HTTP Request: GET https://milvus.io/blog/rss.xml "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:16,370 INFO httpx: HTTP Request: GET https://tech.instacart.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,471 INFO httpx: HTTP Request: GET https://engineering.linkedin.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,532 INFO httpx: HTTP Request: GET https://medium.com/feed/airbnb-engineering "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,617 INFO httpx: HTTP Request: GET https://tech.instacart.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,617 INFO httpx: HTTP Request: GET https://blog.tensorflow.org/feeds/posts/default "HTTP/1.1 200 OK"
+2026-10-28 10:16:16,642 INFO httpx: HTTP Request: GET https://doordash.engineering/robots.txt "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:16,686 INFO httpx: HTTP Request: GET https://engineering.linkedin.com/blog.rss.html "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:16,729 INFO httpx: HTTP Request: GET https://eng.lyft.com/robots.txt "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:16,932 INFO httpx: HTTP Request: GET https://doordash.engineering/feed/ "HTTP/1.1 403 Forbidden"
+2026-10-28 10:16:16,932 INFO httpx: HTTP Request: GET https://medium.com/m/global-identity-2?redirectUrl=https%3A%2F%2Feng.lyft.com%2Frobots.txt "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:17,099 INFO httpx: HTTP Request: GET https://github.blog/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,132 INFO httpx: HTTP Request: GET https://github.blog/ai-and-ml/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,184 INFO httpx: HTTP Request: GET https://eng.lyft.com/robots.txt?gi=1000f3823a3a "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,198 INFO httpx: HTTP Request: GET https://blog.cloudflare.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,260 INFO httpx: HTTP Request: GET https://medium.com/feed/pinterest-engineering "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,290 INFO httpx: HTTP Request: GET https://blog.cloudflare.com/tag/ai/rss/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,293 INFO httpx: HTTP Request: GET https://dropbox.tech/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:17,407 INFO httpx: HTTP Request: GET https://shopify.engineering/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,516 INFO httpx: HTTP Request: GET https://eng.lyft.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,701 INFO httpx: HTTP Request: GET https://replicate.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,730 INFO httpx: HTTP Request: GET https://shopify.engineering/blog.atom "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,902 INFO httpx: HTTP Request: GET https://mlflow.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:17,968 INFO httpx: HTTP Request: GET https://mlflow.org/blog/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,113 INFO httpx: HTTP Request: GET https://www.zenml.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,244 INFO httpx: HTTP Request: GET https://www.zenml.io/rss.xml "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:18,325 INFO httpx: HTTP Request: GET https://www.anyscale.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,327 INFO httpx: HTTP Request: GET https://replicate.com/blog/rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,468 INFO httpx: HTTP Request: GET https://cohere.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,547 INFO httpx: HTTP Request: GET https://machinelearning.apple.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,592 INFO httpx: HTTP Request: GET https://dropbox.tech/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:18,594 INFO httpx: HTTP Request: GET https://www.anyscale.com/blog/rss.xml "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:18,600 INFO httpx: HTTP Request: GET https://cohere.com/blog/rss.xml "HTTP/1.1 307 Temporary Redirect"
+2026-10-28 10:16:18,687 INFO httpx: HTTP Request: GET https://machinelearning.apple.com/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,000 INFO httpx: HTTP Request: GET https://www.anyscale.com/blog "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,000 INFO httpx: HTTP Request: GET https://cohere.com/blog "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,001 INFO httpx: HTTP Request: GET https://hn.algolia.com/api/v1/search_by_date?query=LLM&tags=story&numericFilters=points%3E%3D40%2Ccreated_at_i%3E1793006178&hitsPerPage=30 "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,432 INFO httpx: HTTP Request: GET https://dev.to/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,654 INFO httpx: HTTP Request: GET https://hn.algolia.com/api/v1/search_by_date?query=machine+learning&tags=story&numericFilters=points%3E%3D40%2Ccreated_at_i%3E1793006178&hitsPerPage=30 "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,657 INFO httpx: HTTP Request: GET https://lobste.rs/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:19,658 INFO httpx: HTTP Request: GET https://dev.to/feed/tag/machinelearning "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,062 INFO httpx: HTTP Request: GET https://venturebeat.com/category/ai/feed/ "HTTP/1.1 429 Too Many Requests"
+2026-10-28 10:16:20,165 INFO httpx: HTTP Request: GET https://www.bensbites.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,227 INFO httpx: HTTP Request: GET https://www.deeplearning.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,326 INFO httpx: HTTP Request: GET https://importai.substack.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,337 INFO httpx: HTTP Request: GET https://www.deeplearning.ai/the-batch/feed/ "HTTP/1.1 308 Permanent Redirect"
+2026-10-28 10:16:20,407 INFO httpx: HTTP Request: GET https://www.bensbites.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,418 INFO httpx: HTTP Request: GET https://www.deeplearning.ai/the-batch/feed "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:20,549 INFO httpx: HTTP Request: GET https://importai.substack.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,613 INFO httpx: HTTP Request: GET https://dev.to/feed/tag/llm "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,773 INFO httpx: HTTP Request: GET https://hn.algolia.com/api/v1/search_by_date?query=vector+database&tags=story&numericFilters=points%3E%3D15%2Ccreated_at_i%3E1793006178&hitsPerPage=30 "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,823 INFO httpx: HTTP Request: GET https://tldr.tech/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:20,925 INFO httpx: HTTP Request: GET https://www.latent.space/robots.txt "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:20,997 INFO httpx: HTTP Request: GET https://thesequence.substack.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,012 INFO httpx: HTTP Request: GET https://lastweekin.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,079 INFO httpx: HTTP Request: GET https://lastweekin.ai/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,085 INFO httpx: HTTP Request: GET https://tldr.tech/api/rss/ai "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,212 INFO httpx: HTTP Request: GET https://www.aisnakeoil.com/robots.txt "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:21,232 INFO httpx: HTTP Request: GET https://thesequence.substack.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,429 INFO httpx: HTTP Request: GET https://magazine.sebastianraschka.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,543 INFO httpx: HTTP Request: GET https://www.interconnects.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,620 INFO httpx: HTTP Request: GET https://www.normaltech.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,712 INFO httpx: HTTP Request: GET https://www.aisnakeoil.com/feed "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:21,769 INFO httpx: HTTP Request: GET https://www.interconnects.ai/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,774 INFO httpx: HTTP Request: GET https://garymarcus.substack.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,817 INFO httpx: HTTP Request: GET https://hn.algolia.com/api/v1/search_by_date?query=PyTorch&tags=story&numericFilters=points%3E%3D15%2Ccreated_at_i%3E1793006178&hitsPerPage=30 "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,819 INFO httpx: HTTP Request: GET https://magazine.sebastianraschka.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:21,888 INFO httpx: HTTP Request: GET https://garymarcus.substack.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:22,092 INFO httpx: HTTP Request: GET https://latent.space/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:22,095 INFO httpx: HTTP Request: GET https://www.normaltech.ai/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:22,442 INFO httpx: HTTP Request: GET https://dev.to/feed/tag/rag "HTTP/1.1 200 OK"
+2026-10-28 10:16:22,442 INFO httpx: HTTP Request: GET https://www.latent.space/feed "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:22,763 INFO httpx: HTTP Request: GET https://latent.space/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,152 INFO httpx: HTTP Request: GET https://thealgorithmicbridge.substack.com/robots.txt "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:23,153 INFO httpx: HTTP Request: GET https://newsletter.ruder.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,153 INFO httpx: HTTP Request: GET https://www.oneusefulthing.org/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,154 INFO httpx: HTTP Request: GET https://www.deeplearningweekly.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,154 INFO httpx: HTTP Request: GET https://newsletter.pragmaticengineer.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,154 INFO httpx: HTTP Request: GET https://cameronrwolfe.substack.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,200 INFO httpx: HTTP Request: GET https://newsletter.pragmaticengineer.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,397 INFO httpx: HTTP Request: GET https://www.deeplearningweekly.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,439 INFO httpx: HTTP Request: GET https://newsletter.ruder.io/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,495 INFO httpx: HTTP Request: GET https://www.oneusefulthing.org/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,559 INFO httpx: HTTP Request: GET https://karpathy.github.io/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:23,694 INFO httpx: HTTP Request: GET https://hn.algolia.com/api/v1/search_by_date?query=AI&tags=show_hn&numericFilters=points%3E%3D25%2Ccreated_at_i%3E1793006179&hitsPerPage=30 "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,719 INFO httpx: HTTP Request: GET https://www.thealgorithmicbridge.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,767 INFO httpx: HTTP Request: GET https://karpathy.github.io/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:23,768 INFO httpx: HTTP Request: GET https://cameronrwolfe.substack.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:24,006 INFO httpx: HTTP Request: GET https://thealgorithmicbridge.substack.com/feed "HTTP/1.1 301 Moved Permanently"
+2026-10-28 10:16:24,404 INFO httpx: HTTP Request: GET https://www.thealgorithmicbridge.com/feed "HTTP/1.1 200 OK"
+2026-10-28 10:16:24,406 INFO httpx: HTTP Request: GET https://lilianweng.github.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:24,576 INFO httpx: HTTP Request: GET https://lilianweng.github.io/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:24,781 INFO httpx: HTTP Request: GET https://simonwillison.net/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:24,849 INFO httpx: HTTP Request: GET https://simonwillison.net/atom/everything/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,454 INFO httpx: HTTP Request: GET https://jalammar.github.io/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,454 INFO httpx: HTTP Request: GET https://huyenchip.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,454 INFO httpx: HTTP Request: GET https://colah.github.io/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:25,454 INFO httpx: HTTP Request: GET https://eugeneyan.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,524 INFO httpx: HTTP Request: GET https://jalammar.github.io/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,573 INFO httpx: HTTP Request: GET https://eugeneyan.com/rss/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,685 INFO httpx: HTTP Request: GET https://colah.github.io/rss.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,711 INFO httpx: HTTP Request: GET https://hamel.dev/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,743 INFO httpx: HTTP Request: GET https://hamel.dev/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,986 INFO httpx: HTTP Request: GET https://vickiboykis.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,986 INFO httpx: HTTP Request: GET https://www.fast.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:25,986 INFO httpx: HTTP Request: GET https://mlabonne.github.io/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:26,028 INFO httpx: HTTP Request: GET https://vickiboykis.com/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,056 INFO httpx: HTTP Request: GET https://huyenchip.com/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,241 INFO httpx: HTTP Request: GET https://mlabonne.github.io/blog/feed.xml "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:26,241 INFO httpx: HTTP Request: GET https://www.philschmid.de/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,241 INFO httpx: HTTP Request: GET https://www.fast.ai/index.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,334 INFO httpx: HTTP Request: GET https://sander.ai/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,384 INFO httpx: HTTP Request: GET https://sander.ai/feed.xml "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,503 INFO httpx: HTTP Request: GET https://jxnl.co/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,662 INFO httpx: HTTP Request: GET https://timdettmers.com/robots.txt "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:26,663 INFO httpx: HTTP Request: GET https://sebastianraschka.com/robots.txt "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,663 INFO httpx: HTTP Request: GET https://www.philschmid.de/rss "HTTP/1.1 200 OK"
+2026-10-28 10:16:26,761 INFO httpx: HTTP Request: GET https://jxnl.co/writing/rss.xml "HTTP/1.1 404 Not Found"
+2026-10-28 10:16:26,930 INFO httpx: HTTP Request: GET https://timdettmers.com/feed/ "HTTP/1.1 200 OK"
+2026-10-28 10:16:27,407 INFO httpx: HTTP Request: GET https://sebastianraschka.com/rss_feed.xml "HTTP/1.1 200 OK"
+OK    arxiv-cs-lg               60 items  e.g. KORA: Deterministic-First Execution Control for AI Workloads
+OK    arxiv-cs-ai               60 items  e.g. Counting the Bandages: On measuring the time that AI saves
+OK    arxiv-cs-cl               60 items  e.g. ReCoPII: A Relation-Grounded Framework for Building Contextu
+OK    arxiv-cs-cv               40 items  e.g. ObjectTwin: Measuring the Asset Correspondence Gap for Captu
+OK    arxiv-stat-ml             40 items  e.g. Anchored Stein Variational Gradient Descent Algorithm for No
+OK    arxiv-cs-ir               40 items  e.g. RELAY: One Query, Two Roles for Sequential Recommendation
+OK    arxiv-cs-ma               30 items  e.g. SCOPE: Source Credibility and Outlet Profiling Engine
+OK    hf-daily-papers           50 items  e.g. Zooming without Zooming v2: From Seeing Details to Connectin
+OK    bair-blog                 10 items  e.g. From CUDA to MLX: How K-Search Brings Decades of Kernel Expe
+OK    cmu-ml-blog                1 items  e.g. Forking-Sequences — Part II: Multi-Horizon Forecast Ensembli
+FAIL[robots] stanford-ai-blog         RobotsDisallowed: https://ai.stanford.edu/blog/feed.xml (robots.txt unreachable or 5xx; failing closed)
+OK    mit-news-ai               30 items  e.g. Making machines that can listen
+OK    google-research           30 items  e.g. The sleep framework: A new way for LLMs to retain knowledge 
+OK    deepmind-blog             30 items  e.g. Genie 4: A new generation of world simulation
+OK    allenai-blog              25 items  e.g. Can we trust LLMs to judge whether a research idea is novel?
+OK    the-gradient              15 items  e.g. After Orthogonality: Virtue-Ethical Agency and AI Alignment
+OK    nature-mi                  8 items  e.g. Guidelines for evaluating structure-based methods for protei
+OK    ml-mastery                10 items  e.g. Local Agentic AI Workflows with Hermes + Ollama
+OK    techcrunch-ai             20 items  e.g. VCs will make billions on Anthropic’s IPO, but Amazon is set
+FAIL[http] venturebeat-ai           HTTPStatusError: Client error '429 Too Many Requests' for url 'https://venturebeat.com/category/ai/feed/'
+For more infor
+OK    verge-ai                  10 items  e.g. Researchers are getting tired of OpenAI gatekeeping its brea
+OK    ars-ai                    20 items  e.g. "No human at the helm": Delaware plan would let AI agents ru
+OK    wired-ai                  10 items  e.g. AI Emergency Alerts Are Coming. Humans Might Not Be Ready
+OK    mit-tr-ai                 10 items  e.g. Industrial Intelligence: The next growth opportunity for man
+OK    zdnet-ai                  25 items  e.g. iPhone Duo screen cracks: Serious issue or overblown? What w
+FAIL[http] ai-news                  HTTPStatusError: Client error '403 Forbidden' for url 'https://www.artificialintelligence-news.com/feed/'
+For more infor
+OK    marktechpost              10 items  e.g. Polymathic AI and Princeton Researchers Release FlashMap, a 
+FAIL[http] unite-ai                 HTTPStatusError: Client error '403 Forbidden' for url 'https://www.unite.ai/feed/'
+For more information check: https://d
+OK    siliconangle-ai           30 items  e.g. Intuit rewires accounting education as AI pushes new hires t
+FAIL[robots] register-ai              RobotsDisallowed: https://www.theregister.com/software/ai_ml/headlines.atom (disallowed by robots.txt)
+OK    ieee-spectrum-ai          30 items  e.g. Your Robot’s Safety Functions Already Work. What If the Inpu
+OK    tds                       20 items  e.g. I Broke a Browser Agent on Purpose. Spotting the Fault Was N
+OK    kdnuggets                 10 items  e.g. Google Gemini Omni: What It Actually Does, What It Costs, an
+OK    analytics-india           30 items  e.g. This Bengaluru Startup Is Building AI Agents for Hardware De
+OK    synced                    10 items  e.g. Which Agent Causes Task Failures and When?Researchers from P
+FAIL[http] mlops-community          HTTPStatusError: Client error '404 Not Found' for url 'https://mlops.community/feed'
+For more information check: https:/
+OK    netflix-tech              10 items  e.g. Making Failure Diagnosis Reliable with Pensive AI
+FAIL[http] uber-eng                 HTTPStatusError: Client error '404 Not Found' for url 'https://www.uber.com/hr/hr/blog/engineering/rss/'
+For more inform
+OK    spotify-eng                5 items  e.g. Advancing Generative Recommendation Inference: our collabora
+OK    meta-eng                   9 items  e.g. PrivacyLib: Privacy Controls at the Data Access Boundary
+FAIL[http] meta-ai                  HTTPStatusError: Client error '404 Not Found' for url 'https://ai.meta.com/blog/rss/'
+For more information check: https:
+OK    google-dev                20 items  e.g. Fast, reliable A2UI, with swappable inference formats
+FAIL[parse] gcp-ai-ml                ValueError: unparseable feed: SAXParseException('syntax error')
+OK    aws-ml                    20 items  e.g. AWS named a Leader in the 2026 Gartner Magic Quadrant for Co
+OK    msr                       10 items  e.g. Flint-interactive: A language for creating interactive data 
+OK    nvidia-dev                30 items  e.g. Memory-Enforced GPU Sharing in Kubernetes with NVIDIA CUDA 1
+OK    openai-news               30 items  e.g. Retell uses OpenAI models to help power 100M monthly calls
+OK    anthropic-news            30 items  e.g. Early progress on accelerating drug development with Claude
+OK    hf-blog                   30 items  e.g. Build specialized multimodal models with LFM3
+FAIL[http] pytorch-blog             HTTPStatusError: Client error '404 Not Found' for url 'https://pytorch.org/feed.xml'
+For more information check: https:/
+OK    tensorflow-blog           25 items  e.g. What's new in TensorFlow 2.20
+FAIL[parse] langchain-blog           ValueError: unparseable feed: SAXParseException('not well-formed (invalid token)')
+FAIL[http] llamaindex-blog          HTTPStatusError: Client error '404 Not Found' for url 'https://www.llamaindex.ai/blog/feed'
+For more information check: 
+OK    wandb-blog                 0 items  e.g. -
+OK    databricks-blog           10 items  e.g. Vital Skills: Upskilling Genie Code with Healthcare and Life
+FAIL[robots] weaviate-blog            RobotsDisallowed: https://weaviate.io/rss.xml (disallowed by robots.txt)
+OK    qdrant-blog               30 items  e.g. miniCOIL EN-ES: Sparse Neural Retrieval Across the Language 
+FAIL[http] milvus-blog              HTTPStatusError: Client error '404 Not Found' for url 'https://milvus.io/blog/rss.xml'
+For more information check: https
+OK    supabase-blog             30 items  e.g. Supabase Compute: run your agents inside your project
+FAIL[robots] pgvector-releases        RobotsDisallowed: https://github.com/pgvector/pgvector/releases.atom (disallowed by robots.txt)
+OK    airbnb-eng                10 items  e.g. CASTLE: training natural language search before the first re
+OK    pinterest-eng             10 items  e.g. Introducing ModuleLens: Zooming into PyTorch Modules for Hum
+FAIL[http] linkedin-eng             HTTPStatusError: Client error '404 Not Found' for url 'https://engineering.linkedin.com/blog.rss.html'
+For more informat
+FAIL[http] doordash-eng             HTTPStatusError: Client error '403 Forbidden' for url 'https://doordash.engineering/feed/'
+For more information check: h
+OK    instacart-eng             10 items  e.g. Agentic Machine Learning Modeling at Instacart
+OK    lyft-eng                  10 items  e.g. Refreshing the Travel-Time Map Behind Lyft’s Marketplace: Re
+OK    dropbox-tech              10 items  e.g. Evolving our calendar assistant Reclaim to be AI-native with
+OK    shopify-eng               30 items  e.g. We gave AI agents a mobile dev environment
+OK    cloudflare-ai             20 items  e.g. How Commerce.com and Cloudflare are getting storefronts read
+OK    github-ai-blog            10 items  e.g. How 3 Java Champions are using GitHub Copilot for increased 
+OK    replicate-blog            30 items  e.g. How to make remarkable videos with Seedance 2.0
+FAIL[parse] anyscale-blog            ValueError: unparseable feed: SAXParseException('not well-formed (invalid token)')
+OK    mlflow-blog               20 items  e.g. 5 Simple Tips to Supercharge Your Claude SDK Experience with
+FAIL[robots] neptune-blog             RobotsDisallowed: https://neptune.ai/blog/feed (robots.txt unreachable or 5xx; failing closed)
+FAIL[http] zenml-blog               HTTPStatusError: Client error '404 Not Found' for url 'https://www.zenml.io/rss.xml'
+For more information check: https:/
+OK    apple-mlr                 10 items  e.g. GHARP: Real-Time Gaussian Head Animation from Large-Scale Re
+OK    cohere-blog                0 items  e.g. -
+OK    hn-llm                     6 items  e.g. Survival LLM: AI assistant and emergency library that runs o
+OK    hn-ml                      0 items  e.g. -
+OK    hn-rag-vector              0 items  e.g. -
+OK    hn-pytorch                 0 items  e.g. -
+OK    hn-show-ai                 1 items  e.g. Show HN: Hob - Open-source, on device alternative to Claude 
+SKIP  reddit-ml                REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-localllama        REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-learnml           REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-deeplearning      REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-mlops             REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-llmdevs           REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-langchain         REDDIT_CLIENT_ID/SECRET not set
+SKIP  reddit-artificial        REDDIT_CLIENT_ID/SECRET not set
+FAIL[robots] gh-trending-python       RobotsDisallowed: https://github.com/trending/python?since=daily (disallowed by robots.txt)
+FAIL[robots] gh-trending-notebook     RobotsDisallowed: https://github.com/trending/jupyter-notebook?since=daily (disallowed by robots.txt)
+FAIL[robots] gh-trending-all          RobotsDisallowed: https://github.com/trending?since=daily (disallowed by robots.txt)
+FAIL[robots] gh-trending-rust         RobotsDisallowed: https://github.com/trending/rust?since=weekly (disallowed by robots.txt)
+FAIL[robots] lobsters-ai              RobotsDisallowed: https://lobste.rs/t/ai.rss (disallowed by robots.txt)
+FAIL[robots] lobsters-ml              RobotsDisallowed: https://lobste.rs/t/ml.rss (disallowed by robots.txt)
+OK    devto-ml                  12 items  e.g. What Is BPO and How Does It Work?
+OK    devto-llm                 12 items  e.g. Day 04: Stop parsing prose. Make the model return a struct
+OK    devto-rag                 12 items  e.g. How RAG Actually Works: Chunking, Embeddings, Retrieval, and
+OK    bens-bites                20 items  e.g. Is Anthropic the best business in the world?
+FAIL[http] the-batch                HTTPStatusError: Client error '404 Not Found' for url 'https://www.deeplearning.ai/the-batch/feed'
+For more information 
+OK    import-ai                 20 items  e.g. Import AI 478: Math for alignment; ProgramBench; and Mirendi
+OK    tldr-ai                   20 items  e.g. GPT-6.1 Terra ⚡, Anthropic IPO filing 📈, agent native git 👨‍
+OK    last-week-in-ai           20 items  e.g. Last Week in AI #346 - 719 math manuscripts, 2 Western open 
+OK    the-sequence              20 items  e.g. The Sequence Knowledge - Issue #959: Learning RSI: How Model
+OK    latent-space              20 items  e.g. [AINews] Anthropic ends Coding Interviews: "Hunger beats ten
+OK    ai-snake-oil              20 items  e.g. New paper: Emerging trends in AI agent evaluation
+OK    interconnects             20 items  e.g. Podcast: Kimi K3.1 Pro, the new cyber reality, and Muse musi
+OK    ahead-of-ai               20 items  e.g. Building Reasoning Models from the Ground Up: A Full Video C
+OK    marcus-on-ai              20 items  e.g. What Anthropic left out of their draft S-1
+OK    algorithmic-bridge        20 items  e.g. Put Some Brain in Your Thinking
+OK    deep-learning-weekly      20 items  e.g. Deep Learning Weekly: Issue 478
+OK    ruder-nlp                 20 items  e.g. The Evolving Landscape of LLM Evaluation
+OK    one-useful-thing          20 items  e.g. 30 Months on the Exponential (in Charts)
+OK    pragmatic-engineer        20 items  e.g. AI SRE: what is it, how could it change on-call – and does i
+OK    deep-learning-focus       20 items  e.g. Evaluating Agents on Highly Subjective Tasks
+OK    karpathy                  10 items  e.g. microgpt
+OK    lilian-weng               30 items  e.g. Harness Engineering for Self-Improvement
+OK    chip-huyen                10 items  e.g. Common pitfalls when building generative AI applications
+OK    simon-willison            30 items  e.g. Game Boy Color on My Conference Badge
+OK    eugene-yan                30 items  e.g. Patterns for Building Cybersecurity Evals
+OK    jay-alammar               10 items  e.g. Moving To Substack
+OK    colah                      6 items  e.g. Collaboration and Credit Principles
+OK    hamel-husain              20 items  e.g. How To Use Decision Models for Evals
+OK    fastai                    20 items  e.g. My friends all hate AI; I just joined an AI startup
+OK    vicki-boykis              20 items  e.g. How to Learn ML in 2026 interview
+OK    tim-dettmers              10 items  e.g. dlab Open Source Week: Frontier AI on Your Own Hardware
+OK    sander-dieleman           10 items  e.g. Continuous diffusion language models
+FAIL[http] maxime-labonne           HTTPStatusError: Client error '404 Not Found' for url 'https://mlabonne.github.io/blog/feed.xml'
+For more information ch
+OK    phil-schmid               30 items  e.g. Credentials API for Gemini Managed Agents
+FAIL[http] jxnl                     HTTPStatusError: Client error '404 Not Found' for url 'https://jxnl.co/writing/rss.xml'
+For more information check: http
+OK    raschka-blog              30 items  e.g. Building Reasoning Models from the Ground Up: A Full Video C
+
+95 ok, 29 failed, 8 skipped of 132
+failures by kind: http=15, parse=3, robots=11

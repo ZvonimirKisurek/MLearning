@@ -32,7 +32,6 @@ def test_a_good_chapter_and_essay_pass_every_check():
 
 @pytest.mark.parametrize("mutate,needle", [
     (lambda t: t[:1500], "words of prose"),
-    (lambda t: "# Title\n" + t, "level-1 heading"),
     (lambda t: t.replace("## Check Your Understanding", "## The end"), "Check Your Understanding"),
     (lambda t: t.replace("```python", "```text"), "at least 2 fenced ```python"),
     (lambda t: t.replace("$$", "").replace("$", ""), "mathematics"),
@@ -47,6 +46,20 @@ def test_chapter_checks_catch_each_defect(mutate, needle):
     assert any(needle in p for p in problems), problems
 
 
+def test_level_1_headings_are_stripped_not_failed_but_code_comments_survive():
+    code = "```python\n# load the data\nx = 1\n```\n"
+    out = cc.strip_h1("# Title\n\nbody\n# Another\n" + code)
+    assert out == "body\n" + code.rstrip("\n") and "# load the data" in out and "Title" not in out
+    assert cc.check_chapter("# Title\n" + chapter_text(), min_words=1500, article_ids=frozenset({"A1"})) == []
+    assert cc.check_essay("# Title\n\n" + essay_text(), min_words=450, max_words=800, article_ids=IDS) == []
+
+
+def test_generate_text_saves_the_cleaned_chapter_without_a_repair_round_trip():
+    llm, sent = make_llm([completion("# Stubborn Title\n\n" + chapter_text())], usage=NullUsage())
+    out = llm.generate_text(system="S", user="U", check=chapter_check, purpose="Chapter", clean=cc.strip_h1)
+    assert len(sent) == 1 and "Stubborn Title" not in out and out == out.strip()
+
+
 def test_words_are_counted_outside_code_so_code_cannot_pad_the_minimum():
     md = prose(100) + "\n```python\n" + "x = 1\n" * 3000 + "```\n"
     assert cc.count_words(md) < 130 and cc.count_words(md, include_code=True) > 3000
@@ -57,7 +70,7 @@ def test_words_are_counted_outside_code_so_code_cannot_pad_the_minimum():
     (prose(900, cites=["A1", "A2"]), "maximum is 800"),
     (prose(500) , "at least 2 required"),
     (prose(500, cites=["A1", "A2"]) + "\n- a\n- b\n- c\n- d", "bullet"),
-    ("# Heading\n\n" + essay_text(), "headings"),
+    ("## Heading\n\n" + essay_text(), "headings"),
 ])
 def test_essay_checks(text, needle):
     assert any(needle in p for p in cc.check_essay(text, min_words=450, max_words=800, article_ids=IDS))

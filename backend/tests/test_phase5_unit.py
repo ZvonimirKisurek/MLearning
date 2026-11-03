@@ -102,3 +102,28 @@ def test_enqueue_backend_selection_and_inline_runs_the_job(monkeypatch):
     monkeypatch.setattr("app.curriculum.generators.generate_daily_briefing", lambda: called.set())
     _enqueue_inline("app.tasks.generate_daily_briefing")
     assert called.wait(3)
+
+
+def test_cors_allow_list_merges_frontend_url_and_dedupes():
+    from app.config import Settings
+    s = Settings(cors_origins="http://localhost:3000/, https://a.app", frontend_url="https://a.app/")
+    assert s.cors_origin_list == ["http://localhost:3000", "https://a.app"]
+    assert Settings(cors_origins="", frontend_url="").cors_origin_list == []
+
+
+def test_celery_uses_tls_policy_only_for_rediss_and_keeps_no_result_backend(monkeypatch):
+    import importlib, ssl
+    from app.config import get_settings
+    import app.celery_app as ca
+    try:
+        monkeypatch.setenv("REDIS_URL", "rediss://default:pw@x.upstash.io:6379")
+        get_settings.cache_clear()
+        c = importlib.reload(ca).app
+        assert c.conf.broker_use_ssl == {"ssl_cert_reqs": ssl.CERT_REQUIRED} and c.conf.task_ignore_result is True
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        assert not importlib.reload(ca).app.conf.broker_use_ssl
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+        importlib.reload(ca)

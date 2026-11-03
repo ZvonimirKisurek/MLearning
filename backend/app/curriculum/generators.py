@@ -155,13 +155,13 @@ def generate_daily_briefing(
         return llm.generate_text(
             system=prompts.CHAPTER_SYSTEM, user=prompts.build_chapter_prompt(reading.model_dump(), theme, plan_entry, inspiration, window),
             check=lambda t: cc.check_chapter(t, min_words=settings.chapter_min_words, article_ids=chapter_ids),
-            purpose="Chapter", temperature=settings.temp_chapter)
+            purpose="Chapter", temperature=settings.temp_chapter, clean=cc.strip_h1)
 
     def write_essay() -> str:
         return llm.generate_text(
             system=prompts.INSIGHT_SYSTEM, user=prompts.build_insight_prompt(insight.model_dump(), evidence, window),
             check=lambda t: cc.check_essay(t, min_words=settings.essay_min_words, max_words=settings.essay_max_words, article_ids=essay_ids),
-            purpose="Essay", temperature=settings.temp_chapter, max_tokens=settings.llm_max_tokens)
+            purpose="Essay", temperature=settings.temp_chapter, max_tokens=settings.llm_max_tokens, clean=cc.strip_h1)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         chapter_f, essay_f = pool.submit(write_chapter), pool.submit(write_essay)
