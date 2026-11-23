@@ -13,6 +13,8 @@ from fastapi.concurrency import run_in_threadpool
 from app.api import queries
 from app.api.deps import Cfg, Conn, Pool, get_enqueue, get_llm, require_token
 from app.api.schemas import CompletionOut, NotesIn, NotesOut, FeedPage, QueueOut, SkillOut, SubmissionIn, SubmissionOut, TaskDetailOut, TodayOut
+from app.mastery import acceptance, pytest_report
+from app.mastery import queries as mq
 from app.curriculum.errors import LLMBudgetExceeded, LLMError
 from app.curriculum.evaluation import evaluate
 from app.ingestion.models import Category
@@ -48,9 +50,22 @@ async def briefing_for_day(day: date, conn: Conn, cfg: Cfg):
     return await queries.fetch_today(conn, day)
 
 
+async def _enforce_gate(conn, cfg, task_id: UUID) -> None:
+    """423 Locked while overdue reviews or last week's retrospective stand between you and new material."""
+    row = await (await conn.execute(
+        "select b.day, t.completed_at from daily_tasks t join daily_briefings b on b.id=t.briefing_id where t.id=%s", (task_id,))).fetchone()
+    if row is None or row["completed_at"] is not None:
+        return  # 404 / idempotent re-completion are answered by the normal path
+    reasons = await mq.gate_reasons(conn, cfg, _today(cfg), row["day"])
+    if reasons:
+        raise HTTPException(status.HTTP_423_LOCKED, " ".join(reasons))
+
+
 @router.post("/tasks/{task_id}/complete", response_model=CompletionOut)
-async def complete_task(task_id: UUID, conn: Conn):
-    """Idempotent: completing twice returns `already_completed: true` and awards nothing the second time."""
+async def complete_task(task_id: UUID, conn: Conn, cfg: Cfg):
+    """Idempotent: completing twice returns `already_completed: true` and awards nothing the second time.
+    Locked (423) while review cards are overdue or last week's retrospective is missing."""
+    await _enforce_gate(conn, cfg, task_id)
     try:
         result = await queries.complete_task(conn, task_id)
     except queries.SubmissionRequired:
@@ -66,7 +81,8 @@ async def task_detail(task_id: UUID, conn: Conn, cfg: Cfg):
     detail = await queries.get_task_detail(conn, task_id, cfg.max_submission_attempts)
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
-    detail["archived"] = detail["day"] < _today(cfg)  # a past day's lab is read-only in the UI
+    # Past days are read-only, EXCEPT unfinished lessons inside the catch-up window: those can still be done (late).
+    detail["archived"] = mq.is_archived(detail["day"], detail["task"]["completed"], _today(cfg), cfg.catchup_days)
     return detail
 
 
@@ -98,19 +114,26 @@ async def submit_task(task_id: UUID, body: SubmissionIn, pool: Pool, cfg: Cfg, l
     """
     try:
         async with pool.connection() as conn:
-            begun = await queries.begin_submission(conn, task_id, body.submission, cfg.max_submission_attempts, cfg.max_submission_chars)
+            await _enforce_gate(conn, cfg, task_id)
+            begun = await queries.begin_submission(conn, task_id, body.submission, cfg.max_submission_attempts, cfg.max_submission_chars,
+                                                   body.test_output)
     except queries.SubmissionRejected as exc:
         raise HTTPException(exc.status, exc.detail) from None
+    report = begun["report"]
     try:
-        evaluation = await run_in_threadpool(evaluate, llm, cfg, task=begun["task"], rubric=begun["rubric"], submission=body.submission)
+        evaluation = await run_in_threadpool(evaluate, llm, cfg, task=begun["task"], rubric=begun["rubric"], submission=body.submission,
+                                             tests=pytest_report.describe(report) if report else None)
     except LLMBudgetExceeded as exc:
         await _refund(pool, task_id)
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, f"AI budget reached: {exc}") from None
     except (LLMError, openai.OpenAIError) as exc:
         await _refund(pool, task_id)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"the grader failed ({exc.__class__.__name__}); this attempt was not counted. Try again") from None
+    result = evaluation.model_dump()
+    if report:  # the code-scored test criterion: a task with tests passes only if every acceptance test passed
+        result = acceptance.apply_tests(result, {k: v for k, v in report.items() if k != "output"}, begun["rubric"]["pass_score"])
     async with pool.connection() as conn:
-        return await queries.finish_submission(conn, task_id, evaluation.model_dump(), cfg.max_submission_attempts)
+        return await queries.finish_submission(conn, task_id, result, cfg.max_submission_attempts)
 
 
 async def _refund(pool, task_id: UUID) -> None:

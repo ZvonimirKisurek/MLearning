@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { EvaluationView } from "./evaluation-view";
 
 const MAX = 20_000;
-const PHASES = ["Reading your code…", "Comparing your output with what the code would print…", "Scoring each rubric criterion…", "Writing feedback…"];
+const MAX_TESTS = 30_000;
+const PHASES = ["Counting your passing tests…", "Reading your code…", "Comparing your output with what the code would print…", "Scoring each rubric criterion…", "Writing feedback…"];
 
 /** Cosmetic progress text while the (real, 10-60 s) grading request is in flight. */
 function Grading() {
@@ -33,6 +34,8 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
   const { task } = detail;
   const draftKey = `mle-draft:${task.id}`;
   const [code, setCode] = useState(detail.submission ?? "");
+  const [tests, setTests] = useState(detail.test_output ?? "");
+  const needsTests = !!detail.acceptance_tests;
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(detail.evaluation);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +60,14 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
   const lines = useMemo(() => Math.max(code.split("\n").length, 14), [code]);
   const tooShort = code.trim().length < 20;
   const archived = detail.archived;
-  const canSubmit = !pending && !passed && !archived && !tooShort && code.length <= MAX && left > 0;
+  const testsMissing = needsTests && !/(PASSED|FAILED|ERROR)/.test(tests);
+  const canSubmit = !pending && !passed && !archived && !tooShort && code.length <= MAX && left > 0 && !testsMissing && tests.length <= MAX_TESTS;
 
   function submit() {
     if (!canSubmit) return;
     setError(null);
     start(async () => {
-      const res = await submitTaskAction(task.id, code);
+      const res = await submitTaskAction(task.id, code, needsTests ? tests : undefined);
       if (!res.ok) return setError(res.error);
       setResult(res.data);
       setEvaluation(res.data.evaluation);
@@ -97,10 +101,23 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
         </div>
       </section>
 
+      {needsTests && (
+        <section className="glass overflow-hidden rounded-2xl">
+          <div className="flex items-center justify-between border-b border-white/[0.07] bg-white/[0.03] px-4 py-2.5">
+            <span className="eyebrow">pytest output</span>
+            <span className="font-mono text-xs text-muted-foreground">{detail.acceptance_tests!.run_command}</span>
+          </div>
+          <textarea value={tests} onChange={(e) => setTests(e.target.value)} readOnly={passed || archived} spellCheck={false} rows={7}
+            aria-label="Paste the output of running the acceptance tests" placeholder={"Paste the full output of the run command above (with -v), e.g.\nlab/test_acceptance.py::test_identical_vectors PASSED\n..."}
+            className="w-full resize-y bg-transparent px-4 py-3 font-mono text-[12.5px] leading-[1.6] text-[#e6edf3] outline-none placeholder:text-white/25 read-only:opacity-70" />
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" onClick={submit} disabled={!canSubmit}>{pending ? <Loader2 className="animate-spin" /> : passed ? <CheckCircle2 /> : <Send />}{passed ? "Passed" : "Submit for evaluation"}</Button>
-        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : archived ? "This task is from the past and can no longer be submitted." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
+        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : archived ? "This task is outside the 14-day catch-up window and can no longer be submitted." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
         {!passed && tooShort && code.length > 0 && <span className="text-xs text-warn">Paste your code and its output first.</span>}
+        {!passed && !tooShort && testsMissing && <span className="text-xs text-warn">Paste the pytest -v output too.</span>}
       </div>
 
       {error && <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"><TriangleAlert className="mt-0.5 size-4 shrink-0" /> {error}</div>}

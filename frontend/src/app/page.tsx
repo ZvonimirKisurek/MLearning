@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import { ApiProblem } from "@/components/api-problem";
+import { MasteryCard } from "@/components/mastery/mastery-card";
 import { MissionBoard } from "@/components/mission/mission-board";
 import { PendingBriefing } from "@/components/mission/pending-briefing";
 import { CommandCenterSkeleton } from "@/components/mission/skeletons";
 import { WeeklyThemeCard } from "@/components/mission/weekly-theme-card";
 import { SkillProgress } from "@/components/skills/skill-progress";
-import { attempt, getToday } from "@/lib/api";
+import { attempt, getMastery, getToday } from "@/lib/api";
 import { longDate } from "@/lib/utils";
 
 /**
@@ -25,12 +26,13 @@ export default function Page() {
 }
 
 async function CommandCenter() {
-  const [today, err] = await attempt(getToday());
+  const [[today, err], [mastery]] = await Promise.all([attempt(getToday()), attempt(getMastery())]);  // parallel, not a waterfall
   if (!today) return <ApiProblem error={err} />;
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
       <div className="space-y-8">
         <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{longDate(today.date)}</p>
+        {mastery && <MasteryCard m={mastery} />}
         {today.state === "ready" && today.briefing ? <MissionBoard briefing={today.briefing} /> : <PendingBriefing />}
         {today.weekly_theme && <WeeklyThemeCard weekly={today.weekly_theme} today={today.date} />}
       </div>

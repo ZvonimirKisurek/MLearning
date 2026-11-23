@@ -6,7 +6,10 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/", label: "Command Center" },
-  { href: "/feed", label: "Intelligence Feed" },
+  { href: "/review", label: "Review" },
+  { href: "/math", label: "Math" },
+  { href: "/retro", label: "Retro" },
+  { href: "/feed", label: "Feed" },
   { href: "/calendar", label: "Calendar" },
 ];
 
@@ -14,7 +17,7 @@ const LINKS = [
 export function NavLinks() {
   const pathname = usePathname();
   return (
-    <nav className="flex items-center gap-1 text-sm">
+    <nav className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 text-sm [scrollbar-width:none]">
       {LINKS.map((l) => {
         // A past day (/day/2026-10-28) is part of the Calendar section, so the Calendar tab stays lit there.
         const active = l.href === "/" ? pathname === "/" : l.href === "/calendar" ? pathname.startsWith("/calendar") || pathname.startsWith("/day/") : pathname.startsWith(l.href);
@@ -23,7 +26,7 @@ export function NavLinks() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={cn("rounded-md px-3 py-1.5 transition-colors", active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
+            className={cn("whitespace-nowrap rounded-md px-3 py-1.5 transition-colors", active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
             {l.label}
           </Link>

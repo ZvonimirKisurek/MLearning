@@ -42,7 +42,7 @@ async function Content({ params }: { params: Promise<{ date: string }> }) {
       <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{longDate(date)}</p>
       {archived && (
         <p className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-muted-foreground">
-          <History className="size-4 shrink-0" /> Archived day. You can still read the chapter, but this task is from the past and can no longer be submitted.
+          <History className="size-4 shrink-0" /> Past day. Unfinished lessons from the last 14 days can still be done (catch-up); finished or older ones are read-only.
         </p>
       )}
       {day.state === "ready" && day.briefing
