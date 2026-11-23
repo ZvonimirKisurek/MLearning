@@ -464,3 +464,11 @@ def test_backfill_upgrades_old_lessons_without_touching_notes_and_spreads_due_da
     again = backfill(days=14, llm=FakeLLM(), settings=s, today=TODAY)
     assert again["cards"] == 0 and again["primary_sources"] == 0 and again["acceptance_suites"] == 0  # idempotent
     assert day < TODAY
+
+
+def test_pytest_is_a_runtime_dependency_so_the_production_image_can_verify_suites():
+    import tomllib
+    from pathlib import Path
+
+    deps = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())["project"]["dependencies"]
+    assert any(d.split(">")[0].split("=")[0].strip() == "pytest" for d in deps)
