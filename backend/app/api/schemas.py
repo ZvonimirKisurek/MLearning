@@ -339,12 +339,24 @@ class MathStatusOut(BaseModel):
     accuracy_30d: float | None
 
 
+class CatchupItem(BaseModel):
+    id: UUID
+    kind: Literal["reading", "hands_on", "insight"]
+    title: str
+    skill_slug: str
+    attempt_count: int
+    day: date
+    has_tests: bool
+    expires_on: date = Field(description="after this day the lesson is archived (read-only)")
+
+
 class MasteryOut(BaseModel):
     date: date
     reviews: ReviewStatsOut
     gate: GateOut
     retro: RetroStatusOut
     math: MathStatusOut
+    catchup: list[CatchupItem] = Field(default_factory=list, description="unfinished lessons from recent past days that can still be done")
     generated_at: datetime
 
 

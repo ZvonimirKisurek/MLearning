@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BrainCircuit, CalendarCheck2, Lock, Sigma, Unlock } from "lucide-react";
-import type { Mastery } from "@/lib/types";
+import { BrainCircuit, CalendarCheck2, History, Lock, Sigma, Unlock } from "lucide-react";
+import { skillLabel } from "@/lib/skills";
+import type { CatchupItem, Mastery } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const pct = (v: number | null) => (v === null ? "–" : `${Math.round(v * 100)}%`);
@@ -12,6 +13,29 @@ function Tile({ href, icon: Icon, title, value, sub, alert }: { href: string; ic
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>
     </Link>
+  );
+}
+
+const KIND = { reading: "Chapter", hands_on: "Lab", insight: "Essay" } as const;
+const href = (t: CatchupItem) => (t.kind === "reading" ? `/read/${t.id}` : t.kind === "hands_on" ? `/practice/${t.id}` : `/day/${t.day}`);
+
+/** Lessons you did not finish recently. They stay doable until they expire, oldest first. */
+function Catchup({ items }: { items: CatchupItem[] }) {
+  return (
+    <div className="mt-4 rounded-xl border border-info/25 bg-info/[0.04] p-3.5">
+      <div className="eyebrow mb-2 flex items-center gap-1.5 !text-info"><History className="size-3.5" /> Catch-up · {items.length} unfinished lesson{items.length === 1 ? "" : "s"}</div>
+      <ul className="space-y-1.5 text-sm">
+        {items.slice(0, 6).map((t) => (
+          <li key={t.id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+            <Link href={href(t)} className="min-w-0 truncate underline-offset-4 hover:underline">
+              <span className="mr-2 font-mono text-xs text-muted-foreground">{t.day.slice(5)} · {KIND[t.kind]}</span>{t.title}
+            </Link>
+            <span className="text-xs text-muted-foreground">{skillLabel(t.skill_slug)} · until {t.expires_on.slice(5)}</span>
+          </li>
+        ))}
+      </ul>
+      {items.length > 6 && <p className="mt-1.5 text-xs text-muted-foreground">+{items.length - 6} more in the Calendar</p>}
+    </div>
   );
 }
 
@@ -44,6 +68,7 @@ export function MasteryCard({ m }: { m: Mastery }) {
         <Tile href={`/retro?week=${m.retro.week_start}`} icon={CalendarCheck2} title="Retrospective" alert={retroOwed}
           value={retroOwed ? "owed" : m.retro.submitted ? "done" : "–"} sub={`week of ${m.retro.week_start}`} />
       </div>
+      {m.catchup && m.catchup.length > 0 && <Catchup items={m.catchup} />}
     </section>
   );
 }

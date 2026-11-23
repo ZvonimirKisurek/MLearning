@@ -115,7 +115,7 @@ export function Workspace({ detail }: { detail: TaskDetail }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" onClick={submit} disabled={!canSubmit}>{pending ? <Loader2 className="animate-spin" /> : passed ? <CheckCircle2 /> : <Send />}{passed ? "Passed" : "Submit for evaluation"}</Button>
-        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : archived ? "This task is from the past and can no longer be submitted." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
+        <span className="text-sm text-muted-foreground">{passed ? "Task complete." : archived ? "This task is outside the 14-day catch-up window and can no longer be submitted." : left > 0 ? <>{left} of {detail.attempts_max} attempts left</> : "No attempts left for this task."}</span>
         {!passed && tooShort && code.length > 0 && <span className="text-xs text-warn">Paste your code and its output first.</span>}
         {!passed && !tooShort && testsMissing && <span className="text-xs text-warn">Paste the pytest -v output too.</span>}
       </div>

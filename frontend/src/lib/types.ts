@@ -117,6 +117,11 @@ export interface Mastery {
   gate: { locked: boolean; reasons: string[] };
   retro: { week_start: string; required: boolean; submitted: boolean };
   math: { attempted: number; correct: number; total: number; accuracy_30d: number | null };
+  /** Unfinished lessons from recent past days that can still be done (late). */
+  catchup?: CatchupItem[];
+}
+export interface CatchupItem {
+  id: string; kind: TaskKind; title: string; skill_slug: string; attempt_count: number; day: string; has_tests: boolean; expires_on: string;
 }
 
 export interface MilestoneEvidence { milestone: string; evidence: string }

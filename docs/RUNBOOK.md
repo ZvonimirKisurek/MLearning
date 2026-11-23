@@ -122,6 +122,16 @@ Apply `supabase/migrations/20261123000008_mastery_loop.sql` (non-destructive: ne
 | Primary sources | reading page, `backend/curriculum/canon.yaml` | One human-written source per chapter (paper, book chapter, course), chosen from a closed list, so no reference can be invented. Add entries to the YAML freely. |
 | Math drill | `/math`, `app/mastery/mathdrill.py` | Five problems a day, generated and graded by code (exact answers, no LLM cost). Missed topics come back for three weeks. Moves the `math-foundations` skill. |
 
+| Catch-up | dashboard, `CATCHUP_DAYS` (14) | Lessons you did not finish in the last 14 days stay doable (late) and are listed oldest first; finished or older ones are read-only. |
+
+**Lessons you did not do, generated before Phase 10:** upgrade them in place (nothing is deleted; notes and submissions are kept):
+```bash
+python -m app.cli backfill-mastery --dry-run     # counts only: cards, primary sources, test suites that would be added
+python -m app.cli backfill-mastery               # review cards for every recent chapter; a primary source + acceptance tests for unfinished lessons
+python -m app.cli backfill-mastery --no-llm      # review cards only, zero LLM cost
+```
+Backfilled cards are due from today onward, spread about two old lessons per day, so the review gate does not lock you on day one.
+
 Run acceptance tests from your terminal and submit in one go (stdlib only; uses `API_URL` / `API_TOKEN`):
 ```bash
 python tools/mle_check.py <task-id> --dir ~/labs/today            # writes the suite into your project and runs it

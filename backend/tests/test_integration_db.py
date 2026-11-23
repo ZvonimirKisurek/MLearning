@@ -47,6 +47,8 @@ class FakeLLM:
             d = daily_dict(ids[0], skill="rag", evidence=ids[:2], source_id=sorted(grounding.source_ids)[0])
         elif name == "TaskEvaluationSchema":
             d = evaluation_dict(grounding.rubric.model_dump(), full="FAILME" not in user)
+        elif name == "PrimarySourcePick":
+            d = {"source_id": sorted(grounding.source_ids)[0], "focus": "Read the method section.", "guiding_question": "What problem does it solve?"}
         elif name == "AcceptanceSuite":
             d = acceptance_dict()
         elif name == "RecallCheck":

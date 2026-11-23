@@ -21,6 +21,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.api.deps import Cfg, Conn, Pool, get_llm, require_token
 from app.api.schemas import (
+    CatchupItem,
     GradeIn,
     GradeOut,
     MasteryOut,
@@ -56,6 +57,12 @@ def _raise(exc: mq.Rejected):
 async def mastery(conn: Conn, cfg: Cfg):
     """One round trip for the dashboard: reviews due, the gate (and why), last week's retro, today's math."""
     return await mq.status(conn, cfg, _today(cfg))
+
+
+@router.get("/catchup", response_model=list[CatchupItem])
+async def catchup(conn: Conn, cfg: Cfg):
+    """Lessons you did not finish in the last CATCHUP_DAYS days. They stay doable (late) until `expires_on`."""
+    return await mq.catchup(conn, _today(cfg), cfg.catchup_days)
 
 
 # ------------------------------------------------------------------------------------------------ reviews

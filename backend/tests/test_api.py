@@ -409,7 +409,9 @@ async def test_task_detail_marks_past_day_tasks_archived(client, db):
     ids = task_ids(db)
     assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is False
     _insert_past_briefing(db, TODAY - timedelta(days=2))
-    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is True
+    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is False  # unfinished + recent: catch-up
+    _insert_past_briefing(db, TODAY - timedelta(days=30))
+    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is True   # outside the catch-up window
 
 
 async def test_notes_roundtrip_overwrite_limits_and_task_detail(client, db):

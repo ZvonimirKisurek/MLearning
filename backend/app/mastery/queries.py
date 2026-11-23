@@ -27,6 +27,23 @@ class Rejected(Exception):
         self.status, self.detail = status, detail
 
 
+# ----------------------------------------------------------------------------------------------- catch-up
+def is_archived(day: date, completed: bool, today: date, catchup_days: int) -> bool:
+    """A past task is read-only once done, or once it falls out of the catch-up window. Unfinished recent lessons stay doable."""
+    return day < today and (completed or day < today - timedelta(days=catchup_days))
+
+
+async def catchup(conn: AsyncConnection, today: date, catchup_days: int) -> list[dict]:
+    """Unfinished lessons from past days inside the window, oldest first (do the oldest before it expires)."""
+    rows = await (await conn.execute(
+        """select t.id, t.kind, t.title, t.skill_slug, t.attempt_count, b.day, (t.acceptance_tests is not null) as has_tests
+           from daily_tasks t join daily_briefings b on b.id = t.briefing_id
+           where t.completed_at is null and b.day < %s and b.day >= %s
+           order by b.day, case t.kind when 'reading' then 1 when 'hands_on' then 2 else 3 end""",
+        (today, today - timedelta(days=catchup_days)))).fetchall()
+    return [{**dict(r), "expires_on": r["day"] + timedelta(days=catchup_days)} for r in rows]
+
+
 # ----------------------------------------------------------------------------------------------- gates
 async def overdue_count(conn: AsyncConnection, today: date) -> int:
     row = await (await conn.execute("select count(*) as n from review_cards where not suspended and due_on < %s", (today,))).fetchone()
@@ -259,5 +276,6 @@ async def status(conn: AsyncConnection, cfg: Settings, today: date) -> dict:
         "retro": {"week_start": prev, "required": await retro_required_for(conn, prev), "submitted": await retro_submitted(conn, prev)},
         "math": {"attempted": math_row["n"], "correct": math_row["correct"], "total": cfg.math_problems_per_day,
                  "accuracy_30d": round(acc["c"] / acc["n"], 3) if acc["n"] else None},
+        "catchup": await catchup(conn, today, cfg.catchup_days),
         "generated_at": datetime.now(timezone.utc),
     }

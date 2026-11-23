@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     temp_tests: float = 0.2
     temp_recall: float = 0.1
     math_problems_per_day: int = 5
+    catchup_days: int = 14  # unfinished lessons from the last N days stay doable (catch-up); older ones are archived
     review_batch_limit: int = 30  # max cards served per review session
 
     # --- retention (keeps a free-tier database small) ---

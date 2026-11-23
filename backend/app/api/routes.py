@@ -81,7 +81,8 @@ async def task_detail(task_id: UUID, conn: Conn, cfg: Cfg):
     detail = await queries.get_task_detail(conn, task_id, cfg.max_submission_attempts)
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "task not found")
-    detail["archived"] = detail["day"] < _today(cfg)  # a past day's lab is read-only in the UI
+    # Past days are read-only, EXCEPT unfinished lessons inside the catch-up window: those can still be done (late).
+    detail["archived"] = mq.is_archived(detail["day"], detail["task"]["completed"], _today(cfg), cfg.catchup_days)
     return detail
 
 

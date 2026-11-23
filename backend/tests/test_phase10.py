@@ -399,3 +399,68 @@ def test_migration_adds_the_mastery_tables(db):
     assert {"review_cards", "review_log", "weekly_retros", "math_attempts"} <= tables
     assert _sql(db, "select name from skills where slug in ('math-foundations', 'classical-ml') order by slug") == [("Classical ML",), ("Math for ML",)]
     assert _sql(db, "select bool_and(relrowsecurity) from pg_class where relname in ('review_cards','review_log','weekly_retros','math_attempts')")[0][0]
+
+
+# ================================================================================ catch-up + backfill
+def test_archive_rule_keeps_unfinished_recent_lessons_doable():
+    from app.mastery.queries import is_archived
+
+    today = date(2026, 11, 23)
+    assert not is_archived(today, False, today, 14)                          # today is never archived
+    assert not is_archived(today - timedelta(days=3), False, today, 14)      # unfinished and recent: catch-up
+    assert is_archived(today - timedelta(days=3), True, today, 14)           # done: read-only
+    assert is_archived(today - timedelta(days=15), False, today, 14)         # out of the window
+
+
+def _make_old_lesson(db, days_ago: int, *, strip_new_features: bool = True):
+    """Move today's generated briefing into the past and remove what pre-Phase-10 lessons lacked."""
+    day = TODAY - timedelta(days=days_ago)
+    _sql(db, "update daily_briefings set day=%s", day)
+    if strip_new_features:
+        _sql(db, "delete from review_cards")
+        _sql(db, "update daily_tasks set acceptance_tests=null, reference_solution=null")
+        _sql(db, "update daily_briefings set payload = payload #- '{morning_reading,primary_source}'")
+    return day
+
+
+@pytest.mark.integration
+async def test_unfinished_past_lessons_appear_in_catchup_and_can_still_be_done(client, db):
+    seed_articles()
+    generate_today()
+    day = _make_old_lesson(db, 3, strip_new_features=False)
+    ids = task_ids(db)
+    items = (await client.get("/api/catchup")).json()
+    assert [i["kind"] for i in items] == ["reading", "hands_on", "insight"] and items[0]["day"] == day.isoformat()
+    assert items[0]["expires_on"] == (day + timedelta(days=14)).isoformat()
+    assert len((await client.get("/api/mastery")).json()["catchup"]) == 3
+    assert (await client.get(f"/api/tasks/{ids['hands_on']}")).json()["archived"] is False
+    assert (await client.post(f"/api/tasks/{ids['reading']}/complete")).status_code == 200
+    assert (await client.get(f"/api/tasks/{ids['reading']}")).json()["archived"] is True  # done -> read-only
+    assert [i["kind"] for i in (await client.get("/api/catchup")).json()] == ["hands_on", "insight"]
+    _sql(db, "update daily_briefings set day=%s", TODAY - timedelta(days=20))
+    assert (await client.get("/api/catchup")).json() == []
+
+
+@pytest.mark.integration
+def test_backfill_upgrades_old_lessons_without_touching_notes_and_spreads_due_dates(client, db):
+    from tests.test_integration_db import FakeLLM
+    from app.config import Settings
+    from app.mastery.backfill import backfill
+
+    seed_articles()
+    generate_today()
+    day = _make_old_lesson(db, 10)
+    _sql(db, "update daily_tasks set notes='my notes' where kind='reading'")
+    s = Settings(timezone="UTC")
+    dry = backfill(days=14, dry_run=True, settings=s, today=TODAY)
+    assert dry["cards"] == 7 and dry["skipped_llm"] == 2 and not _sql(db, "select 1 from review_cards")  # 4 chapter + 3 teach-back, nothing written
+
+    out = backfill(days=14, llm=FakeLLM(), settings=s, today=TODAY)
+    assert out["primary_sources"] == 1 and out["acceptance_suites"] == 1 and out["cards"] == 8 and out["errors"] == 0
+    assert min(r[0] for r in _sql(db, "select due_on from review_cards")) >= TODAY  # nothing overdue -> no surprise lock
+    assert _sql(db, "select notes from daily_tasks where kind='reading'")[0][0] == "my notes"
+    assert _sql(db, "select acceptance_tests->>'status' from daily_tasks where kind='hands_on'")[0][0] == "verified"
+    assert _sql(db, "select payload #>> '{morning_reading,primary_source,id}' from daily_briefings")[0][0] in canon.load_canon()
+    again = backfill(days=14, llm=FakeLLM(), settings=s, today=TODAY)
+    assert again["cards"] == 0 and again["primary_sources"] == 0 and again["acceptance_suites"] == 0  # idempotent
+    assert day < TODAY
