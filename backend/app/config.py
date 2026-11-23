@@ -78,9 +78,20 @@ class Settings(BaseSettings):
     # (single-user deployments with no Redis; jobs are lost if the process restarts mid-run - just click again).
     task_backend: str = "celery"
 
-    # --- 4-week roadmap steering (off unless ROADMAP_START is set to the Monday you begin) ---
+    # --- multi-week roadmap steering (off unless ROADMAP_START is set to the Monday you begin) ---
     roadmap_file: str = "curriculum/roadmap.yaml"
     roadmap_start: str = ""  # YYYY-MM-DD
+
+    # --- mastery loop (spaced review, weekly retro gate, acceptance tests, math drill) ---
+    review_gate: bool = True  # tasks cannot be completed while review cards due BEFORE today are still unanswered
+    retro_gate: bool = True  # this week's tasks stay locked until last week's retrospective is submitted
+    acceptance_tests: bool = True  # generate an executable pytest suite for every hands-on task
+    verify_acceptance_tests: bool = True  # run each suite against its reference solution in a sandbox (see docs/SAFETY.md)
+    acceptance_timeout_s: int = 90
+    temp_tests: float = 0.2
+    temp_recall: float = 0.1
+    math_problems_per_day: int = 5
+    review_batch_limit: int = 30  # max cards served per review session
 
     # --- retention (keeps a free-tier database small) ---
     retention_days: int = 60

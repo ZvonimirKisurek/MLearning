@@ -51,7 +51,7 @@ async def test_today_pending_before_generation(client):
     assert r.status_code == 200
     body = r.json()
     assert body["state"] == "pending" and body["briefing"] is None and body["weekly_theme"] is None
-    assert len(body["skills"]) == 7
+    assert len(body["skills"]) == 8
 
 
 async def test_today_ready_has_tasks_theme_and_resolved_urls(client, db):
@@ -109,12 +109,16 @@ async def test_briefing_completes_when_all_three_done_and_errors(client, db):
     flags = [(await client.post(f"/api/tasks/{ids['reading']}/complete")).json()["briefing_completed"],
              (await client.post(f"/api/tasks/{ids['insight']}/complete")).json()["briefing_completed"]]
     assert flags == [False, False]
-    r = await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": GOOD_SUBMISSION})  # hands-on is completed by a PASS
+    r = await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})  # hands-on is completed by a PASS
     assert r.json()["briefing_completed"] is True
     assert (await client.post("/api/tasks/00000000-0000-0000-0000-000000000000/complete")).status_code == 404
     assert (await client.post("/api/tasks/not-a-uuid/complete")).status_code == 422
 
 
+PYTEST_PASS = ("lab/test_acceptance.py::test_identical_vectors_have_similarity_one PASSED [ 33%]\n"
+               "lab/test_acceptance.py::test_orthogonal_vectors_have_similarity_zero PASSED [ 66%]\n"
+               "lab/test_acceptance.py::test_matches_numpy_on_random_vectors PASSED [100%]\n\n============================== 3 passed in 0.12s ===============================")
+PYTEST_ONE_FAIL = PYTEST_PASS.replace("similarity_zero PASSED", "similarity_zero FAILED").replace("3 passed", "1 failed, 2 passed")
 GOOD_SUBMISSION = "import numpy as np\n\ndef cosine(a, b):\n    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))\n\nprint(cosine([1, 0], [1, 1]))  # 0.7071067811865475"
 
 
@@ -151,7 +155,7 @@ async def test_passing_submission_completes_the_task_and_moves_only_that_skill(c
     generate_today()
     tid = task_ids(db)["hands_on"]
     before = {s["slug"]: s["level"] for s in (await client.get("/api/skills")).json()}
-    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION})
+    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})
     assert r.status_code == 200
     out = r.json()
     assert out["passed"] is True and out["evaluation"]["score"] == 10 and out["task"]["completed"] and out["attempts_used"] == 1
@@ -161,7 +165,7 @@ async def test_passing_submission_completes_the_task_and_moves_only_that_skill(c
     assert all(after[k] == before[k] for k in before if k != "rag")
     detail = (await client.get(f"/api/tasks/{tid}")).json()
     assert detail["submission"] == GOOD_SUBMISSION and detail["evaluation"]["passed"] and detail["task"]["evaluation_score"] == 10
-    again = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION})
+    again = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})
     assert again.status_code == 409 and "already passed" in again.json()["detail"]
 
 
@@ -170,15 +174,18 @@ async def test_failing_submission_gives_feedback_but_never_moves_the_skill(clien
     generate_today()
     tid = task_ids(db)["hands_on"]
     bad = "FAILME " + GOOD_SUBMISSION
-    r1 = (await client.post(f"/api/tasks/{tid}/submit", json={"submission": bad})).json()
-    assert r1["passed"] is False and r1["evaluation"]["score"] == 1 and r1["skill"] is None and not r1["task"]["completed"]
+    r1 = (await client.post(f"/api/tasks/{tid}/submit", json={"submission": bad, "test_output": PYTEST_ONE_FAIL})).json()
+    assert r1["passed"] is False and r1["evaluation"]["score"] <= 3 and r1["skill"] is None and not r1["task"]["completed"]
+    tests = r1["evaluation"]["tests"]
+    assert tests["passed"] == 2 and tests["failed"] == ["test_orthogonal_vectors_have_similarity_zero"] and not tests["all_passed"]
+    assert r1["evaluation"]["criteria"][-1]["criterion"] == "Acceptance tests pass"
     assert r1["evaluation"]["problems"] and r1["attempts_used"] == 1
     assert await level_of(client, "rag") == 20
     with psycopg.connect(db) as conn:
         assert conn.execute("select count(*) from skill_history").fetchone()[0] == 0
         row = conn.execute("select user_submission, ai_evaluation_feedback, evaluation_passed, attempt_count from daily_tasks where id=%s", (tid,)).fetchone()
         assert row[0] == bad and "What you did well" in row[1] and row[2] is False and row[3] == 1
-    r2 = (await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION})).json()  # retry succeeds
+    r2 = (await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})).json()  # retry succeeds
     assert r2["passed"] and r2["attempts_used"] == 2 and r2["skill"]["delta"] > 0
 
 
@@ -190,15 +197,15 @@ async def test_attempt_cap_validation_and_wrong_task_kinds(client, db, monkeypat
     get_settings.cache_clear()
     bad = "FAILME " + GOOD_SUBMISSION
     for _ in range(2):
-        assert (await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": bad})).status_code == 200
-    capped = await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": bad})
+        assert (await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": bad, "test_output": PYTEST_PASS})).status_code == 200
+    capped = await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": bad, "test_output": PYTEST_PASS})
     assert capped.status_code == 429 and "attempt limit" in capped.json()["detail"]
     assert (await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": "too short"})).status_code == 422
-    assert (await client.post(f"/api/tasks/{ids['reading']}/submit", json={"submission": GOOD_SUBMISSION})).status_code == 409
-    assert (await client.post("/api/tasks/00000000-0000-0000-0000-000000000000/submit", json={"submission": GOOD_SUBMISSION})).status_code == 404
+    assert (await client.post(f"/api/tasks/{ids['reading']}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})).status_code == 409
+    assert (await client.post("/api/tasks/00000000-0000-0000-0000-000000000000/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})).status_code == 404
     monkeypatch.setenv("MAX_SUBMISSION_CHARS", "50")
     get_settings.cache_clear()
-    assert (await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": GOOD_SUBMISSION})).status_code == 413
+    assert (await client.post(f"/api/tasks/{ids['hands_on']}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})).status_code == 413
 
 
 async def test_grader_failure_refunds_the_attempt_and_budget_exhaustion_is_a_503(client, db):
@@ -212,10 +219,10 @@ async def test_grader_failure_refunds_the_attempt_and_budget_exhaustion_is_a_503
         def generate(self, **kw): raise self.exc
 
     client.app.dependency_overrides[get_llm] = lambda: Broken(LLMValidationFailed("grader kept disagreeing with the rubric"))
-    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION})
+    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})
     assert r.status_code == 502 and "not counted" in r.json()["detail"]
     client.app.dependency_overrides[get_llm] = lambda: Broken(LLMBudgetExceeded("cap is $1.00"))
-    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION})
+    r = await client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS})
     assert r.status_code == 503 and "budget" in r.json()["detail"].lower()
     with psycopg.connect(db) as conn:
         assert conn.execute("select attempt_count, evaluation_result from daily_tasks where id=%s", (tid,)).fetchone() == (0, None)
@@ -226,7 +233,7 @@ async def test_simultaneous_passing_submissions_award_the_skill_once(client, db)
     seed_articles()
     generate_today()
     tid = task_ids(db)["hands_on"]
-    results = await asyncio.gather(*[client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION}) for _ in range(3)])
+    results = await asyncio.gather(*[client.post(f"/api/tasks/{tid}/submit", json={"submission": GOOD_SUBMISSION, "test_output": PYTEST_PASS}) for _ in range(3)])
     codes = sorted(r.status_code for r in results)
     assert codes.count(200) >= 1 and set(codes) <= {200, 409}
     with psycopg.connect(db) as conn:

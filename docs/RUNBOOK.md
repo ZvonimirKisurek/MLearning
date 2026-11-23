@@ -104,8 +104,31 @@ Edit a skill's description (the retrieval "query"): `update skills set descripti
 
 ## 7. Roadmap mode
 Set `ROADMAP_START=<the Monday you begin>` in `.env`. From then on `generate-weekly` follows `backend/curriculum/roadmap.yaml`
-(4 weeks), and the news only picks timely readings. After week 4 it returns to free mode. To restart, change the date.
-Edit the YAML to change the plan (skills must be existing slugs).
+(24 weeks in two quarters), and the news only picks timely readings. Each week also sets the math drill's topics
+(`math_topics`), and each quarter ends with a public deliverable that the closing week's retrospective asks you to link.
+After week 24 it returns to free mode; the YAML's `beyond:` section says what to do in months 7-12. To restart, change the date.
+Edit the YAML to change the plan (skills must be existing slugs, math topics must be keys of `app/mastery/mathdrill.py` GENERATORS;
+`pytest tests/test_phase5_unit.py` checks both).
+
+## 8. The mastery loop (Phase 10, migration 0008)
+Apply `supabase/migrations/20261123000008_mastery_loop.sql` (non-destructive: new tables, new columns, a `math-foundations` skill).
+
+| Piece | Where | What it does |
+|---|---|---|
+| Spaced review | `/review`, `app/mastery/srs.py` | Every chapter's "Check Your Understanding" questions, the primary source's guiding question and the week's core questions become cards. Answer from memory, optionally "Check with AI", then grade Again/Hard/Good/Easy (SM-2 schedules the next review). |
+| Gates | `REVIEW_GATE`, `RETRO_GATE` | Completing or submitting a task returns **423** while cards due before today are unanswered, or while last week's retrospective is missing. Reviews, retro and math are never gated. Suspend a bad card instead of disabling the gate. |
+| Weekly retrospective | `/retro` | Opens on Sunday. Needs every teach-back card answered, evidence (or "not done: why") for every milestone, a reflection and a decision. The decision, your most-lapsed cards and missed math topics are fed to next week's planner (`<learner_signals>`). |
+| Acceptance tests | practice page, `tools/mle_check.py` | Each lab ships a pytest suite proven passable against a hidden reference solution. Submissions need the `pytest -v` output; code counts PASSED tests and the task passes only if all pass. The reference solution is shown after a pass or the last attempt. |
+| Primary sources | reading page, `backend/curriculum/canon.yaml` | One human-written source per chapter (paper, book chapter, course), chosen from a closed list, so no reference can be invented. Add entries to the YAML freely. |
+| Math drill | `/math`, `app/mastery/mathdrill.py` | Five problems a day, generated and graded by code (exact answers, no LLM cost). Missed topics come back for three weeks. Moves the `math-foundations` skill. |
+
+Run acceptance tests from your terminal and submit in one go (stdlib only; uses `API_URL` / `API_TOKEN`):
+```bash
+python tools/mle_check.py <task-id> --dir ~/labs/today            # writes the suite into your project and runs it
+python tools/mle_check.py <task-id> --dir ~/labs/today --submit   # then submits your project files + the real pytest output
+```
+If the sandbox cannot run a suite on the server (for example torch is not installed there), the suite is stored as "unverified".
+Install the libraries your labs use into the worker image to verify those too, or set `VERIFY_ACCEPTANCE_TESTS=false`.
 
 
 ## Phase 7 upgrade: deep-learning mode (migration 0006)
@@ -120,7 +143,7 @@ python -m app.cli generate-weekly --force && python -m app.cli generate-daily --
 
 - Reading chapters (>=1500 words) are generated in a second/third LLM call per day, so generation takes ~1-2 minutes.
 - Hands-on tasks are **not tick-able**: they complete only when `POST /api/tasks/{id}/submit` returns `passed` (max 6 attempts/task).
-  Grading is an AI code review of the pasted code + output; it does not execute anything.
+  Grading is an AI code review of the pasted code + output; since Phase 10, labs with acceptance tests also need your `pytest -v` output (section 8).
 - Grading calls take 10-60 s: on Vercel Hobby (10 s function limit) set `maxDuration` on the route or use a Pro plan.
 - Try the whole UI offline: `python backend/scripts/demo_server.py` (fake LLM; submissions pass iff they use `np.linalg.norm`).
 - `python -m app.cli reset-progress --yes` resets skills/history/submissions again.
